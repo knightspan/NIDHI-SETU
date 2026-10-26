@@ -42,6 +42,7 @@ import { TransitionsService } from './transitions.service.js';
     AssertionsService,
     TransitionsService,
     DocumentsService,
+    DiscrepancyEngine,
     STORAGE_ADAPTER,
   ],
 })

@@ -42,7 +42,9 @@ const EnvSchema = z.object({
   SMTP_FROM: z.string().default('NidhiSetu <no-reply@nidhisetu.local>'),
   EMAIL_ENABLED: bool(true),
   SMS_ADAPTER: z.enum(['stub']).default('stub'),
-  BANK_ADAPTER: z.enum(['desk', 'mock-api']).default('desk'),
+  // desk = every bank via the manual desk; mock-api = simulated API for every bank;
+  // auto = simulated API for banks flagged apiEnabled in the master, desk for the rest.
+  BANK_ADAPTER: z.enum(['desk', 'mock-api', 'auto']).default('auto'),
   MOCK_BANK_API_LATENCY_MS: z.coerce.number().int().nonnegative().default(800),
   MOCK_BANK_API_FAILURE_RATE: z.coerce.number().min(0).max(1).default(0.1),
   OCR_URL: z.string().default('http://localhost:8000'),

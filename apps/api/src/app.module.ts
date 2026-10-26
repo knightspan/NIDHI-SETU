@@ -5,6 +5,7 @@ import { AdminModule } from './admin/admin.module.js';
 import { InstrumentsModule } from './instruments/instruments.module.js';
 import { ScrutinyModule } from './discrepancies/scrutiny.module.js';
 import { AuditModule } from './audit/audit.module.js';
+import { BankModule } from './bank/bank.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CsrfMiddleware } from './auth/csrf.middleware.js';
 import { JwtAuthGuard, PermissionsGuard } from './auth/guards.js';
@@ -37,6 +38,7 @@ import { RulesModule } from './rules/rules.module.js';
     AdminModule,
     InstrumentsModule,
     ScrutinyModule,
+    BankModule,
   ],
   controllers: [HealthController],
   providers: [

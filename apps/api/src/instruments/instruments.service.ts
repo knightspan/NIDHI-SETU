@@ -12,6 +12,7 @@ import {
 import { AuditService } from '../audit/audit.service.js';
 import { actorOf, type Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
+import { bankRequestsForInstrument } from '../bank/bank-views.js';
 import { DiscrepancyEngine } from '../discrepancies/discrepancy-engine.service.js';
 import { DISCREPANCY_INCLUDE, toDiscrepancyViews } from '../discrepancies/discrepancy-views.js';
 import { allowedActions, type InstrumentAction } from '../domain/actions.js';
@@ -290,6 +291,7 @@ export class InstrumentsService {
           orderBy: { createdAt: 'desc' },
         }),
       ),
+      bankRequests: await bankRequestsForInstrument(this.prisma, inst.id),
       allowedActions: await this.actionsFor(p, inst),
     };
   }
@@ -463,6 +465,15 @@ export class InstrumentsService {
     _actor: Actor,
   ): Promise<void> {
     // Extended in Phase 6.
+  }
+
+  /** Called when an instrument becomes ACTIVE (validity in Phase 5, renewal completion in Phase 6). */
+  async onActivated(
+    _tx: Prisma.TransactionClient,
+    _inst: Instrument,
+    _actor: Actor,
+  ): Promise<void> {
+    // Extended in later phases.
   }
 
   /** Renewal: the replacement was rejected, so the old instrument is active again (Phase 6). */

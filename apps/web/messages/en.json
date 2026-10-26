@@ -346,5 +346,58 @@
   },
   "renewals": {
     "renew": "Submit renewal / replacement"
+  },
+  "bank": {
+    "deskTitle": "Bank Confirmation Desk",
+    "deskSubtitle": "Confirmation requests from AICTE addressed to {bank}",
+    "pending": "Awaiting your answer",
+    "answered": "Answered",
+    "allRequests": "All requests",
+    "empty": "No confirmation requests.",
+    "requestFor": "Request for {refNo}",
+    "due": "Answer due {date}",
+    "overdue": "Overdue since {date}",
+    "open": "Open",
+    "aicteHolds": "What AICTE holds",
+    "yourAnswer": "Your confirmation",
+    "answerHelp": "Check your core banking records and confirm each item. Anything you contradict is sent back to AICTE scrutiny.",
+    "qExists": "Does this FDR exist in your records?",
+    "qLien": "Is a lien marked in favour of AICTE?",
+    "qMaturity": "Maturity date per your records",
+    "qAutoRenewal": "Is auto-renewal enabled?",
+    "qAmount": "Principal amount per your records (₹)",
+    "remarks": "Remarks",
+    "reference": "Bank reference no.",
+    "letter": "Signed confirmation letter (PDF/image, optional)",
+    "submitConfirm": "Confirm all",
+    "submitDeny": "Submit answer",
+    "sent": "Answer sent to AICTE",
+    "panelTitle": "Bank confirmation",
+    "none": "Not yet sent to the bank.",
+    "sendToBank": "Send to bank for confirmation",
+    "sendConfirm": "Send this instrument to {bank} for confirmation of existence, lien, maturity and auto-renewal?",
+    "sentToBank": "Sent to the bank",
+    "retry": "Retry bank API",
+    "retried": "Bank API called again",
+    "channel": "Channel",
+    "channels": {
+      "DESK": "Bank desk (manual)",
+      "MOCK_API": "Bank API (simulated)"
+    },
+    "statuses": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "DENIED": "Denied / contradicted",
+      "FAILED": "API failed"
+    },
+    "requestedBy": "Requested by {who} on {when}",
+    "respondedBy": "Answered by {who} on {when}",
+    "attempts": "{count, plural, one {# attempt} other {# attempts}}",
+    "answerExists": "Exists",
+    "answerLien": "Lien for AICTE",
+    "answerMaturity": "Maturity",
+    "answerAutoRenewal": "Auto-renewal",
+    "answerAmount": "Principal",
+    "viewLetter": "View letter"
   }
 }

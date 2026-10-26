@@ -160,11 +160,18 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Web: scrutiny queue, discrepancies queue, discrepancy panel, data-driven action bar
 - [x] Tests: rules engine versions, all discrepancy rules, full scrutiny loop, role/scope checks
 
-### Phase 4 — Bank Confirmation Desk
+### Phase 4 — Bank Confirmation Desk ✅
 
-- [ ] `BankVerificationAdapter`, `BankDeskAdapter`, `MockBankApiAdapter`
-- [ ] Bank officer UI (own bank only), confirm/deny 4 checks + letter
-- [ ] BANK_CONFIRMED assertions → ACTIVE; `docs/INTEGRATION.md`
+- [x] `BankVerificationAdapter` with `BankDeskAdapter` (manual) and `MockBankApiAdapter` (latency, failure
+      rate, demo trap numbers); `BANK_ADAPTER=desk|mock-api|auto`
+- [x] RO "send to bank" (OFFICER_VERIFIED → BANK_CONFIRMATION_PENDING) with a snapshot of AICTE's values
+- [x] Bank officers see only their bank's queue; confirm/deny existence, lien, maturity, auto-renewal,
+      principal; optional signed letter stored as evidence
+- [x] Response → BANK_CONFIRMED assertions; all agree → BANK_CONFIRMED → ACTIVE; otherwise HIGH
+      `BANK_DENIED` discrepancy and back to UNDER_SCRUTINY; failed API calls retryable
+- [x] `docs/INTEGRATION.md` (real bank API, NeSL-style registry)
+- [x] Web: mobile-first bank desk + answer form, bank panel and "send to bank" on the instrument
+- [x] Tests: response evaluation, adapters, desk/API/deny/retry flows, bank scoping
 
 ### Phase 5 — Rules, lifecycle, alerts, demo clock
 

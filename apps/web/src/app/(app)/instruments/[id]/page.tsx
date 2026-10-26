@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { ActionBar } from '@/components/instrument/action-bar';
+import { BankPanel } from '@/components/instrument/bank-panel';
 import { DiscrepanciesPanel } from '@/components/instrument/discrepancies-panel';
 import { DocumentsPanel } from '@/components/instrument/documents-panel';
 import { FieldsPanel } from '@/components/instrument/fields-panel';
@@ -34,6 +35,7 @@ export default function InstrumentPage() {
         <div className="space-y-4 lg:col-span-2">
           {!workspace && <FieldsPanel inst={inst} />}
           {showDiscrepancies && <DiscrepanciesPanel inst={inst} />}
+          <BankPanel inst={inst} canRetry={can(me, 'bank:request')} />
           <DocumentsPanel inst={inst} />
         </div>
         <div className="space-y-4">

@@ -3,6 +3,7 @@
 import type { InstrumentDetail } from '@nidhisetu/shared';
 import {
   Ban,
+  Building2,
   CheckCircle2,
   ClipboardCheck,
   Pencil,
@@ -130,6 +131,17 @@ export function ActionBar({ inst, extra }: { inst: InstrumentDetail; extra?: Rea
       path: `${base}/verify`,
       success: t('scrutiny.markedVerified'),
       hint: t('scrutiny.markVerifiedHint'),
+    },
+    {
+      action: 'send_to_bank',
+      label: t('bank.sendToBank'),
+      icon: Building2,
+      path: `${base}/send-to-bank`,
+      confirm: {
+        title: t('bank.sendToBank'),
+        description: t('bank.sendConfirm', { bank: inst.bankName ?? inst.bankCode ?? '' }),
+      },
+      success: t('bank.sentToBank'),
     },
     {
       action: 'reject',
