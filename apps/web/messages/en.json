@@ -184,7 +184,54 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Welcome, {name}"
+    "welcome": "Welcome, {name}",
+    "asOf": "As of {date}",
+    "kpi": {
+      "heldAmount": "Held by AICTE",
+      "heldCount": "{count, plural, one {# deposit} other {# deposits}}",
+      "active": "Active",
+      "expiring30": "Expiring ≤ 30 days",
+      "expiring60": "Expiring ≤ 60 days",
+      "expiring90": "Expiring ≤ 90 days",
+      "matured": "Matured",
+      "overdue": "Overdue renewal",
+      "renewed": "Renewed",
+      "released": "Released",
+      "pendingVerification": "Pending verification",
+      "openDiscrepancies": "Open discrepancies",
+      "fraudSignals": "Duplicate-FDR fraud signals"
+    },
+    "workQueue": "Your work queue",
+    "queueEmpty": "Nothing waiting for you.",
+    "queue": {
+      "drafts": "Drafts not yet submitted",
+      "discrepancyRaised": "Instruments returned with discrepancies",
+      "renewalsDue": "Deposits needing renewal",
+      "releasesInProgress": "Release requests in progress",
+      "awaitingScrutiny": "Awaiting scrutiny",
+      "responsesToReview": "Institution responses to review",
+      "readyForBank": "Verified, ready to send to bank",
+      "awaitingBank": "Awaiting bank confirmation",
+      "releaseRequests": "Release requests to recommend",
+      "overdueRenewals": "Overdue renewals",
+      "escalations": "Open escalations to your role",
+      "fraudSignals": "Duplicate-FDR fraud signals",
+      "releasesAwaitingDecision": "Releases awaiting your decision",
+      "releasesAwaitingExecution": "Approved releases to execute",
+      "bankPending": "Confirmation requests to answer",
+      "bankOverdue": "Requests past their due date",
+      "auditEvents": "Audit events recorded",
+      "users": "Active users",
+      "placeholderRules": "Rules still on placeholder values"
+    },
+    "byRegion": "Held deposits by region (₹)",
+    "byBank": "Held deposits by bank (₹)",
+    "byStatus": "Instruments by lifecycle status",
+    "byValidity": "Validity of held deposits",
+    "showTable": "Show as table",
+    "count": "Count",
+    "amount": "Amount",
+    "noData": "No data in your scope yet."
   },
   "instruments": {
     "title": "Instruments",
@@ -578,5 +625,104 @@
       "MIN_HOLDING_PERIOD": "Minimum holding period",
       "DEPOSIT_NOT_REQUIRED_OR_REPLACED": "Deposit no longer required"
     }
+  },
+  "search": {
+    "label": "Search NidhiSetu",
+    "placeholder": "Search institutions, FDRs, references…",
+    "institutions": "Institutions",
+    "instruments": "Instruments",
+    "none": "No matches"
+  },
+  "savedFilters": {
+    "title": "Saved filters",
+    "save": "Save current filter",
+    "name": "Filter name",
+    "saved": "Filter saved",
+    "deleted": "Filter removed",
+    "none": "No saved filters"
+  },
+  "institutions": {
+    "title": "Institutions",
+    "subtitle": "Deposit requirement and compliance per institution",
+    "search": "Search name, AICTE ID, trust or state…",
+    "anyCompliance": "Any compliance",
+    "compliant": "Compliant",
+    "shortfall": "Shortfall",
+    "exempt": "Exempt",
+    "colInstitution": "Institution",
+    "colRegion": "Region",
+    "colHeld": "Held",
+    "colRequired": "Required",
+    "colStatus": "Compliance",
+    "colOpen": "Open issues",
+    "empty": "No institutions match.",
+    "statement": "Institution statement",
+    "contact": "Contact",
+    "downloadPdf": "Download statement (PDF)",
+    "requirementNote": "Requirement computed from the rules in force (placeholder values until verified)."
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Management reports for your scope. Every export is recorded in the audit trail.",
+    "days": "Window (days)",
+    "institution": "Institution",
+    "preview": "Preview",
+    "rows": "{count, plural, one {# row} other {# rows}}",
+    "names": {
+      "pending-verifications": "Pending verifications",
+      "upcoming-maturities": "Upcoming maturities",
+      "missing-documents": "Missing documents",
+      "intervention": "Cases needing intervention",
+      "institution-statement": "Institution statement"
+    }
+  },
+  "metrics": {
+    "title": "Outcome metrics",
+    "subtitle": "The measurable improvements the problem statement asks for, computed from the tamper-evident audit trail and compared with a manually entered pre-portal baseline.",
+    "baseline": "Baseline",
+    "setBaseline": "Set baseline",
+    "noBaseline": "No baseline set",
+    "sample": "{count, plural, one {based on # record} other {based on # records}}",
+    "better": "Better than baseline",
+    "worse": "Worse than baseline",
+    "noValue": "Not enough data yet",
+    "lowerBetter": "lower is better",
+    "higherBetter": "higher is better",
+    "baselineSaved": "Baseline saved",
+    "baselineNote": "Baseline source / note",
+    "ageing": "Open discrepancy ageing (days)",
+    "names": {
+      "verification_turnaround_days": "Median verification turnaround",
+      "renewals_before_maturity_pct": "Renewals received before maturity",
+      "release_processing_days": "Average release processing time",
+      "open_discrepancy_age_days": "Median age of open discrepancies",
+      "fully_bank_confirmed_pct": "Records fully bank-confirmed"
+    },
+    "units": {
+      "days": "days",
+      "percent": "%"
+    }
+  },
+  "audit": {
+    "title": "Audit trail",
+    "subtitle": "Append-only, sha256 hash-chained record of every action. Editing or deleting a row breaks the chain.",
+    "verify": "Verify audit chain",
+    "verifying": "Recomputing every hash…",
+    "ok": "Chain intact: {count} events verified",
+    "broken": "Chain broken at {count, plural, one {# point} other {# points}}",
+    "head": "Head hash",
+    "filterAction": "Action starts with…",
+    "filterEntity": "Entity type",
+    "filterEntityId": "Entity ID",
+    "from": "From",
+    "to": "To",
+    "colSeq": "#",
+    "colWhen": "When",
+    "colActor": "Actor",
+    "colAction": "Action",
+    "colEntity": "Entity",
+    "colHash": "Hash",
+    "details": "Details",
+    "empty": "No events match."
   }
 }

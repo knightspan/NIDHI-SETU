@@ -11,6 +11,7 @@ import { ApiError } from '@/lib/api-client';
 import { visibleNav } from '@/lib/nav';
 import { useMe, useSignOut } from '@/lib/session';
 import { cn, formatDate } from '@/lib/utils';
+import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -143,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 md:flex-none md:w-56 lg:w-64">
             <p className="truncate text-sm font-semibold text-slate-900">{me.name}</p>
             <p className="truncate text-xs text-slate-600">
               {t(`roles.${me.role}`)}
@@ -151,6 +152,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               {me.regionName && ` · ${me.regionName}`}
               {me.bankName && ` · ${me.bankName}`}
             </p>
+          </div>
+          <div className="flex flex-1 justify-center px-2">
+            {(me.permissions.includes('instrument:read') ||
+              me.permissions.includes('institution:read')) && <GlobalSearch />}
           </div>
           <NotificationBell />
           <LocaleSwitcher />

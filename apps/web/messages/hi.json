@@ -184,7 +184,54 @@
   },
   "dashboard": {
     "title": "डैशबोर्ड",
-    "welcome": "स्वागत है, {name}"
+    "welcome": "स्वागत है, {name}",
+    "asOf": "{date} की स्थिति",
+    "kpi": {
+      "heldAmount": "एआईसीटीई के पास धारित",
+      "heldCount": "{count, plural, one {# जमा} other {# जमा}}",
+      "active": "सक्रिय",
+      "expiring30": "≤ 30 दिनों में समाप्त",
+      "expiring60": "≤ 60 दिनों में समाप्त",
+      "expiring90": "≤ 90 दिनों में समाप्त",
+      "matured": "परिपक्व",
+      "overdue": "नवीनीकरण अतिदेय",
+      "renewed": "नवीनीकृत",
+      "released": "निर्मुक्त",
+      "pendingVerification": "सत्यापन लंबित",
+      "openDiscrepancies": "खुली विसंगतियाँ",
+      "fraudSignals": "दोहरी-एफडीआर धोखाधड़ी संकेत"
+    },
+    "workQueue": "आपकी कार्य कतार",
+    "queueEmpty": "आपके लिए कुछ भी प्रतीक्षित नहीं।",
+    "queue": {
+      "drafts": "जमा न किए गए मसौदे",
+      "discrepancyRaised": "विसंगतियों सहित लौटाए गए लिखत",
+      "renewalsDue": "नवीनीकरण योग्य जमा",
+      "releasesInProgress": "प्रगति में निर्मुक्ति अनुरोध",
+      "awaitingScrutiny": "जाँच की प्रतीक्षा में",
+      "responsesToReview": "समीक्षा हेतु संस्थान के उत्तर",
+      "readyForBank": "सत्यापित, बैंक को भेजने हेतु तैयार",
+      "awaitingBank": "बैंक पुष्टि की प्रतीक्षा",
+      "releaseRequests": "अनुशंसा हेतु निर्मुक्ति अनुरोध",
+      "overdueRenewals": "अतिदेय नवीनीकरण",
+      "escalations": "आपकी भूमिका को खुली वृद्धि",
+      "fraudSignals": "दोहरी-एफडीआर धोखाधड़ी संकेत",
+      "releasesAwaitingDecision": "आपके निर्णय की प्रतीक्षा में निर्मुक्ति",
+      "releasesAwaitingExecution": "निष्पादन हेतु स्वीकृत निर्मुक्ति",
+      "bankPending": "उत्तर देने हेतु पुष्टि अनुरोध",
+      "bankOverdue": "नियत तिथि पार अनुरोध",
+      "auditEvents": "दर्ज ऑडिट घटनाएँ",
+      "users": "सक्रिय उपयोगकर्ता",
+      "placeholderRules": "प्लेसहोल्डर मानों वाले नियम"
+    },
+    "byRegion": "क्षेत्रवार धारित जमा (₹)",
+    "byBank": "बैंकवार धारित जमा (₹)",
+    "byStatus": "जीवनचक्र स्थितिवार लिखत",
+    "byValidity": "धारित जमा की वैधता",
+    "showTable": "तालिका के रूप में देखें",
+    "count": "संख्या",
+    "amount": "राशि",
+    "noData": "आपके दायरे में अभी कोई आँकड़ा नहीं।"
   },
   "instruments": {
     "title": "लिखत",
@@ -578,5 +625,104 @@
       "MIN_HOLDING_PERIOD": "न्यूनतम धारण अवधि",
       "DEPOSIT_NOT_REQUIRED_OR_REPLACED": "जमा की अब आवश्यकता नहीं"
     }
+  },
+  "search": {
+    "label": "निधिसेतु में खोजें",
+    "placeholder": "संस्थान, एफडीआर, संदर्भ खोजें…",
+    "institutions": "संस्थान",
+    "instruments": "लिखत",
+    "none": "कोई मेल नहीं"
+  },
+  "savedFilters": {
+    "title": "सहेजे गए फ़िल्टर",
+    "save": "वर्तमान फ़िल्टर सहेजें",
+    "name": "फ़िल्टर का नाम",
+    "saved": "फ़िल्टर सहेजा गया",
+    "deleted": "फ़िल्टर हटाया गया",
+    "none": "कोई सहेजा गया फ़िल्टर नहीं"
+  },
+  "institutions": {
+    "title": "संस्थान",
+    "subtitle": "प्रत्येक संस्थान की जमा आवश्यकता और अनुपालन",
+    "search": "नाम, एआईसीटीई आईडी, ट्रस्ट या राज्य खोजें…",
+    "anyCompliance": "कोई भी अनुपालन",
+    "compliant": "अनुपालित",
+    "shortfall": "कमी",
+    "exempt": "छूट प्राप्त",
+    "colInstitution": "संस्थान",
+    "colRegion": "क्षेत्र",
+    "colHeld": "धारित",
+    "colRequired": "आवश्यक",
+    "colStatus": "अनुपालन",
+    "colOpen": "खुले मुद्दे",
+    "empty": "कोई संस्थान मेल नहीं खाता।",
+    "statement": "संस्थान विवरण",
+    "contact": "संपर्क",
+    "downloadPdf": "विवरण डाउनलोड करें (PDF)",
+    "requirementNote": "आवश्यकता लागू नियमों से गणना की गई (सत्यापन तक प्लेसहोल्डर मान)।"
+  },
+  "reports": {
+    "title": "रिपोर्ट",
+    "subtitle": "आपके दायरे हेतु प्रबंधन रिपोर्ट। प्रत्येक निर्यात ऑडिट ट्रेल में दर्ज होता है।",
+    "days": "अवधि (दिन)",
+    "institution": "संस्थान",
+    "preview": "पूर्वावलोकन",
+    "rows": "{count, plural, one {# पंक्ति} other {# पंक्तियाँ}}",
+    "names": {
+      "pending-verifications": "लंबित सत्यापन",
+      "upcoming-maturities": "आगामी परिपक्वताएँ",
+      "missing-documents": "अनुपलब्ध दस्तावेज़",
+      "intervention": "हस्तक्षेप आवश्यक मामले",
+      "institution-statement": "संस्थान विवरण"
+    }
+  },
+  "metrics": {
+    "title": "परिणाम मापदंड",
+    "subtitle": "समस्या विवरण में माँगे गए मापने योग्य सुधार, छेड़छाड़-प्रकट ऑडिट ट्रेल से गणना कर पोर्टल-पूर्व आधार रेखा से तुलना।",
+    "baseline": "आधार रेखा",
+    "setBaseline": "आधार रेखा निर्धारित करें",
+    "noBaseline": "कोई आधार रेखा नहीं",
+    "sample": "{count, plural, one {# अभिलेख पर आधारित} other {# अभिलेखों पर आधारित}}",
+    "better": "आधार रेखा से बेहतर",
+    "worse": "आधार रेखा से खराब",
+    "noValue": "अभी पर्याप्त आँकड़े नहीं",
+    "lowerBetter": "कम बेहतर है",
+    "higherBetter": "अधिक बेहतर है",
+    "baselineSaved": "आधार रेखा सहेजी गई",
+    "baselineNote": "आधार रेखा का स्रोत / टिप्पणी",
+    "ageing": "खुली विसंगतियों की आयु (दिन)",
+    "names": {
+      "verification_turnaround_days": "सत्यापन में लगने वाला माध्य समय",
+      "renewals_before_maturity_pct": "परिपक्वता से पहले प्राप्त नवीनीकरण",
+      "release_processing_days": "निर्मुक्ति प्रक्रिया का औसत समय",
+      "open_discrepancy_age_days": "खुली विसंगतियों की माध्य आयु",
+      "fully_bank_confirmed_pct": "पूर्णतः बैंक-पुष्ट अभिलेख"
+    },
+    "units": {
+      "days": "दिन",
+      "percent": "%"
+    }
+  },
+  "audit": {
+    "title": "ऑडिट ट्रेल",
+    "subtitle": "प्रत्येक कार्रवाई का केवल-जोड़ने योग्य, sha256 हैश-शृंखलित अभिलेख। किसी पंक्ति को बदलने या हटाने से शृंखला टूट जाती है।",
+    "verify": "ऑडिट शृंखला सत्यापित करें",
+    "verifying": "प्रत्येक हैश पुनः गणना हो रहा है…",
+    "ok": "शृंखला अक्षुण्ण: {count} घटनाएँ सत्यापित",
+    "broken": "शृंखला {count, plural, one {# स्थान} other {# स्थानों}} पर टूटी",
+    "head": "शीर्ष हैश",
+    "filterAction": "कार्रवाई इससे प्रारंभ…",
+    "filterEntity": "इकाई प्रकार",
+    "filterEntityId": "इकाई आईडी",
+    "from": "से",
+    "to": "तक",
+    "colSeq": "#",
+    "colWhen": "कब",
+    "colActor": "कर्ता",
+    "colAction": "कार्रवाई",
+    "colEntity": "इकाई",
+    "colHash": "हैश",
+    "details": "विवरण",
+    "empty": "कोई घटना मेल नहीं खाती।"
   }
 }

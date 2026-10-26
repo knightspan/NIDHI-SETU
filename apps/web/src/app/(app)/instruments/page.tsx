@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { InstrumentTable } from '@/components/instrument-table';
+import { SavedFilters } from '@/components/saved-filters';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
 import { Input, Select } from '@/components/ui/form';
@@ -133,6 +134,7 @@ function InstrumentsInner() {
               </Select>
             )}
           </div>
+          <SavedFilters />
           <InstrumentTable
             caption={t('instruments.title')}
             query={{ ...state, pageSize: 25 }}

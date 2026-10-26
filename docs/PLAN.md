@@ -216,10 +216,21 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Status timeline visible to the institution; releases queue; notifications at every step
 - [x] Tests: checklist rules, maker-checker, full flow, segregation of duties, decline, scoping
 
-### Phase 8 — Dashboard & reports
+### Phase 8 — Dashboard & reports ✅
 
-- [ ] KPI cards, charts (region/bank/status), work queues, global search + saved filters
-- [ ] Reports CSV/XLSX/PDF; outcome metrics page with admin baselines
+- [x] Scoped dashboard: held amount, KPI tiles (active, expiring 30/60/90, matured, overdue, renewed,
+      released, pending verification, open discrepancies, fraud signals), validity mix (status colours
+      + labels), charts by status / region / bank with hover tooltips and table views, role work queues
+- [x] Global header search (institutions + instruments, scoped), per-user saved filters
+- [x] Institutions list with requirement vs held and compliance (compliant / shortfall / exempt),
+      institution statement page
+- [x] Reports: pending verifications, upcoming maturities, missing documents, cases needing
+      intervention, institution statement — CSV (formula-injection safe, BOM), XLSX, PDF; exports audited
+- [x] Outcome metrics from audit events (median verification turnaround, renewals before maturity,
+      release processing time, discrepancy ageing, % fully bank-confirmed) vs admin-entered baselines
+- [x] Audit trail viewer with filters, payload details and one-click chain verification
+- [x] Tests: dashboard scoping, compliance, search, all report formats, metrics + baselines,
+      saved filters, CSV escaping
 
 ### Phase 9 — OCR & legacy digitisation
 
