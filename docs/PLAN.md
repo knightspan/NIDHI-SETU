@@ -121,16 +121,18 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] ESLint (type-aware) + Prettier; CI workflow (TS, Python, compose validation)
 - [x] `.env.example`, `docs/PLAN.md`, `docs/DECISIONS.md`
 
-### Phase 1 — Data, auth, RBAC, audit
+### Phase 1 — Data, auth, RBAC, audit ✅
 
-- [ ] Prisma schema for all entities (§6.1) + migrations; shared enums
-- [ ] Lifecycle state machine in `packages/shared` + unit tests
-- [ ] Auth: argon2 passwords, JWT in httpOnly cookies, refresh, logout
-- [ ] TOTP MFA (mandatory except INSTITUTION_USER), encrypted secrets
-- [ ] RBAC guard + permissions matrix; query-level region/institution/bank scoping
-- [ ] Hash-chained `audit_events` + UPDATE/DELETE-blocking trigger + chain verification
-- [ ] Web: login + MFA screens, role-aware shell
-- [ ] Tests: state machine, scoping, audit chain, RBAC allowed/forbidden
+- [x] Prisma schema for all entities (§6.1) + migrations; shared enums
+- [x] Lifecycle state machine in `packages/shared` + unit tests
+- [x] Auth: argon2id passwords, JWT in httpOnly cookies, rotating refresh tokens, logout, lockout
+- [x] TOTP MFA (mandatory except INSTITUTION_USER, forced enrolment), AES-GCM encrypted secrets
+- [x] Default-deny permission guard + permissions matrix; query-level region/institution/bank scoping
+- [x] Hash-chained `audit_events` + UPDATE/DELETE/TRUNCATE-blocking triggers + chain verification
+- [x] CSRF double-submit, helmet, rate limiting, OpenAPI at `/api/docs`
+- [x] Web: login + MFA/enrolment screens, role-aware shell, en/hi from day one
+- [x] Seed: regions, 8 banks, 60 institutions, rules v1, one demo user per role; `demo:otp` helper
+- [x] Tests: state machine, scoping, audit chain (incl. tamper + concurrency), auth/MFA, RBAC
 
 ### Phase 2 — Institution module
 

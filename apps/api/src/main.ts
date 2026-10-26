@@ -1,13 +1,17 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { configureApp } from './app.setup.js';
+import { getConfig } from './config/config.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api');
-  app.enableShutdownHooks();
-  const port = Number(process.env.API_PORT ?? 4000);
-  await app.listen(port, '0.0.0.0');
+  const config = getConfig();
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Behind the Next.js proxy / a load balancer: trust one hop for client IPs.
+  app.set('trust proxy', 1);
+  configureApp(app);
+  await app.listen(config.API_PORT, '0.0.0.0');
 }
 
 void bootstrap();

@@ -1,14 +1,27 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { HealthResponse } from '@nidhisetu/shared';
+import { Public } from '../auth/decorators.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Public()
   @Get()
-  check(): HealthResponse {
+  async check(): Promise<HealthResponse> {
+    let dbOk = true;
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      dbOk = false;
+    }
     return {
-      status: 'ok',
+      status: dbOk ? 'ok' : 'degraded',
       service: 'api',
-      version: process.env.npm_package_version ?? '0.1.0',
+      version: '0.1.0',
       time: new Date().toISOString(),
     };
   }

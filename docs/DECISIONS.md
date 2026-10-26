@@ -81,3 +81,42 @@ PostgreSQL 16.14 (`@embedded-postgres/*` binaries, as optional deps so only the 
 `docker-compose.yml`. Data lives in the git-ignored `.data/` folder.
 **Consequences:** Development and tests work without Docker. Docker Compose remains the supported way to run
 the full demo; the Dockerfiles are validated in CI (`docker compose config`) rather than on this machine.
+
+### D-012 · Three extra lifecycle transitions (2026-10-26)
+
+**Context:** The brief's state machine has no exit when a bank denies a confirmation, when a renewal's
+replacement is rejected, or when an officer declines to recommend a release.
+**Decision:** Add `BANK_CONFIRMATION_PENDING → UNDER_SCRUTINY` (bank denied/contradicted),
+`RENEWAL_PENDING → ACTIVE` (replacement rejected) and `RELEASE_REQUESTED → RELEASE_REJECTED` (officer
+declines). `RELEASE_REJECTED → ACTIVE` happens automatically in the same transaction, so the instrument
+never rests in RELEASE_REJECTED; the rejection stays on the release request and in the transition log.
+**Consequences:** Every state stays reachable and every non-terminal state has an exit (unit-tested).
+
+### D-013 · Cookie auth + double-submit CSRF, same-origin proxy (2026-10-26)
+
+**Decision:** Access (15 min) and refresh (8 h, rotating, single use, stored hashed) tokens live in
+httpOnly SameSite=Lax cookies. Every state-changing request must echo the readable `ns_csrf` cookie in
+`x-csrf-token`. The browser only talks to the Next.js origin, which proxies `/api/*` to NestJS, so cookies
+are first-party.
+
+### D-014 · SYS_ADMIN sees no financial records (2026-10-26)
+
+**Decision:** The admin's data scope is `NONE`: users, rules, master data, demo clock and audit
+verification only. Least privilege, and it backs the brief's rule that the admin cannot approve releases.
+
+### D-015 · Default-deny authorisation (2026-10-26)
+
+**Decision:** A global guard refuses any non-public route that does not declare `@RequirePermission(...)` or
+`@AuthenticatedOnly()`, so a forgotten annotation fails closed.
+
+### D-016 · Integration tests on a dedicated `*_test` database (2026-10-26)
+
+**Decision:** The integration suite drops and re-migrates the `public` schema of a database whose name must
+end in `_test` (checked before anything runs). Each test file builds its own isolated fixture (unique
+regions, banks, institutions and users), so files never depend on each other.
+
+### D-017 · Demo TOTP secrets are deterministic (2026-10-26)
+
+**Decision:** Demo accounts get TOTP secrets derived from their email, printed by `pnpm seed`, and
+`pnpm demo:otp <email>` prints the current code, so judges can sign in without a phone. Real accounts
+always get random secrets through enrolment.

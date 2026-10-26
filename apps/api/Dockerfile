@@ -25,4 +25,4 @@ COPY --from=builder --chown=app:app /repo .
 USER app
 WORKDIR /repo/apps/api
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/main.js"]

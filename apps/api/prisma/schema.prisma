@@ -1,0 +1,555 @@
+// NidhiSetu data model (Section 6.1). All seed data is fictional.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums (kept identical to packages/shared/src/enums.ts) ──────────────────
+
+enum Role {
+  INSTITUTION_USER
+  RO_OFFICER
+  BUREAU_OFFICER
+  COMPETENT_AUTHORITY
+  FINANCE_OFFICER
+  BANK_OFFICER
+  AUDITOR
+  SYS_ADMIN
+}
+
+enum InstrumentType {
+  FDR
+  ONLINE_DEPOSIT
+  OTHER
+}
+
+enum LifecycleStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_SCRUTINY
+  DISCREPANCY_RAISED
+  OFFICER_VERIFIED
+  BANK_CONFIRMATION_PENDING
+  BANK_CONFIRMED
+  ACTIVE
+  RENEWAL_PENDING
+  RENEWED
+  RELEASE_REQUESTED
+  RELEASE_RECOMMENDED
+  RELEASE_APPROVED
+  RELEASED
+  RELEASE_REJECTED
+  REJECTED
+}
+
+enum ValidityStatus {
+  VALID
+  EXPIRING_SOON
+  MATURED
+  OVERDUE_RENEWAL
+}
+
+enum TrustLevel {
+  DECLARED
+  OCR_EXTRACTED
+  OFFICER_VERIFIED
+  BANK_CONFIRMED
+}
+
+enum DocumentType {
+  FDR_SCAN
+  BANK_LETTER
+  AFFIDAVIT
+  NOC
+  OTHER
+}
+
+enum DiscrepancyStatus {
+  OPEN
+  RESPONDED
+  RESOLVED
+  WAIVED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum BankRequestStatus {
+  PENDING
+  CONFIRMED
+  DENIED
+  FAILED
+}
+
+enum BankChannel {
+  DESK
+  MOCK_API
+}
+
+enum ReleaseStatus {
+  REQUESTED
+  RECOMMENDED
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
+enum RuleType {
+  ELIGIBILITY
+  REQUIRED_AMOUNT
+  VALIDITY
+  REMINDER_OFFSETS
+  ESCALATION_SLA
+  RELEASE_PRECONDITIONS
+  DISCREPANCY
+}
+
+enum LegacyItemStatus {
+  PENDING_REVIEW
+  CONFIRMED
+  REJECTED
+}
+
+// ─── Master data ──────────────────────────────────────────────────────────────
+
+model Region {
+  id           String        @id @default(uuid()) @db.Uuid
+  code         String        @unique
+  name         String
+  institutions Institution[]
+  users        User[]
+  legacyBatches LegacyBatch[]
+}
+
+model Bank {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // matches the IFSC bank prefix, e.g. "SBIN"
+  name        String
+  active      Boolean @default(true)
+  apiEnabled  Boolean @default(false) // bank offers (mock) API confirmation
+  instruments Instrument[]
+  users       User[]
+  bankRequests BankConfirmationRequest[]
+}
+
+model Institution {
+  id              String       @id @default(uuid()) @db.Uuid
+  aicteId         String       @unique // fictional AICTE permanent ID
+  name            String
+  trustName       String
+  regionId        String       @db.Uuid
+  region          Region       @relation(fields: [regionId], references: [id])
+  state           String
+  district        String?
+  yearEstablished Int
+  programmes      String[] // ProgrammeCode values
+  contactEmail    String
+  contactPhone    String
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  instruments     Instrument[]
+  users           User[]
+  documents       Document[]
+
+  @@index([regionId])
+  @@index([name])
+}
+
+// ─── Users & sessions ────────────────────────────────────────────────────────
+
+model User {
+  id             String       @id @default(uuid()) @db.Uuid
+  email          String       @unique
+  name           String
+  passwordHash   String
+  role           Role
+  regionId       String?      @db.Uuid
+  region         Region?      @relation(fields: [regionId], references: [id])
+  institutionId  String?      @db.Uuid
+  institution    Institution? @relation(fields: [institutionId], references: [id])
+  bankId         String?      @db.Uuid
+  bank           Bank?        @relation(fields: [bankId], references: [id])
+  phone          String?
+  mfaSecretEnc   String? // AES-256-GCM encrypted TOTP secret
+  mfaEnabled     Boolean      @default(false)
+  active         Boolean      @default(true)
+  failedLogins   Int          @default(0)
+  lockedUntil    DateTime?    @db.Timestamptz(3)
+  lastLoginAt    DateTime?    @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  sessions       Session[]
+  notifications  Notification[]
+  savedFilters   SavedFilter[]
+
+  @@index([role])
+}
+
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique // sha256 of the refresh token
+  expiresAt  DateTime  @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
+}
+
+// ─── Instruments & provenance ────────────────────────────────────────────────
+
+model Instrument {
+  id                   String          @id @default(uuid()) @db.Uuid
+  refNo                String          @unique // human reference, e.g. NS-2026-000123
+  type                 InstrumentType  @default(FDR)
+  institutionId        String          @db.Uuid
+  institution          Institution     @relation(fields: [institutionId], references: [id])
+  // Effective values (from the highest-trust assertion), denormalised for search and reports.
+  bankId               String?         @db.Uuid
+  bank                 Bank?           @relation(fields: [bankId], references: [id])
+  bankCode             String?
+  branch               String?
+  ifsc                 String?
+  fdrNumber            String?
+  amount               Decimal?        @db.Decimal(14, 2)
+  issueDate            DateTime?       @db.Date
+  maturityDate         DateTime?       @db.Date
+  depositorNames       String?
+  jointName            Boolean         @default(false)
+  lienMarked           Boolean         @default(false)
+  autoRenewal          Boolean         @default(false)
+  status               LifecycleStatus @default(DRAFT)
+  validityStatus       ValidityStatus?
+  trustScore           Int             @default(0) // 0–100
+  mismatchCount        Int             @default(0)
+  legacy               Boolean         @default(false) // digitised from a physical original
+  replacesInstrumentId String?         @unique @db.Uuid
+  replaces             Instrument?     @relation("RenewalChain", fields: [replacesInstrumentId], references: [id])
+  replacedBy           Instrument?     @relation("RenewalChain")
+  createdById          String?         @db.Uuid
+  submittedAt          DateTime?       @db.Timestamptz(3)
+  scrutinyStartedAt    DateTime?       @db.Timestamptz(3)
+  verifiedAt           DateTime?       @db.Timestamptz(3)
+  activatedAt          DateTime?       @db.Timestamptz(3)
+  closedAt             DateTime?       @db.Timestamptz(3)
+  statusChangedAt      DateTime        @default(now()) @db.Timestamptz(3)
+  createdAt            DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime        @updatedAt @db.Timestamptz(3)
+  assertions           FieldAssertion[]
+  documents            Document[]
+  discrepancies        Discrepancy[]
+  bankRequests         BankConfirmationRequest[]
+  releaseRequests      ReleaseRequest[]
+  reminders            Reminder[]
+  transitions          StatusTransition[]
+
+  @@index([institutionId])
+  @@index([status])
+  @@index([validityStatus])
+  @@index([maturityDate])
+  @@index([bankCode, fdrNumber])
+}
+
+model StatusTransition {
+  id           String          @id @default(uuid()) @db.Uuid
+  instrumentId String          @db.Uuid
+  instrument   Instrument      @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  from         LifecycleStatus?
+  to           LifecycleStatus
+  action       String
+  actorId      String?         @db.Uuid
+  actorRole    String // a Role or "SYSTEM"
+  note         String?
+  at           DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([instrumentId, at])
+}
+
+model FieldAssertion {
+  id                 String     @id @default(uuid()) @db.Uuid
+  instrumentId       String     @db.Uuid
+  instrument         Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  field              String // FieldKey
+  value              String // normalised (see shared normalizeFieldValue)
+  trust              TrustLevel
+  actorId            String?    @db.Uuid
+  source             String? // e.g. "institution", "ocr", "bank-desk", "mock-bank-api"
+  confidence         Float? // OCR confidence 0–1
+  evidenceDocumentId String?    @db.Uuid
+  evidenceDocument   Document?  @relation(fields: [evidenceDocumentId], references: [id])
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([instrumentId, field])
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+model Document {
+  id            String       @id @default(uuid()) @db.Uuid
+  instrumentId  String?      @db.Uuid
+  instrument    Instrument?  @relation(fields: [instrumentId], references: [id])
+  institutionId String?      @db.Uuid
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  type          DocumentType
+  storageKey    String       @unique
+  sha256        String // of the plaintext
+  mimeType      String
+  size          Int
+  originalName  String
+  version       Int          @default(1)
+  supersedesId  String?      @db.Uuid
+  iv            String // AES-GCM IV (base64)
+  authTag       String // AES-GCM tag (base64)
+  uploadedById  String       @db.Uuid
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  assertions    FieldAssertion[]
+  legacyItem    LegacyItem?
+
+  @@index([instrumentId])
+  @@index([sha256])
+}
+
+// ─── Discrepancies ───────────────────────────────────────────────────────────
+
+model Discrepancy {
+  id           String               @id @default(uuid()) @db.Uuid
+  instrumentId String               @db.Uuid
+  instrument   Instrument           @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  ruleCode     String // DiscrepancyRuleCode, MANUAL or BANK_DENIED
+  field        String?
+  severity     Severity
+  description  String
+  status       DiscrepancyStatus    @default(OPEN)
+  autoRaised   Boolean              @default(false)
+  raisedById   String?              @db.Uuid
+  dueAt        DateTime?            @db.Timestamptz(3)
+  respondedAt  DateTime?            @db.Timestamptz(3)
+  resolvedAt   DateTime?            @db.Timestamptz(3)
+  resolvedById String?              @db.Uuid
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+  comments     DiscrepancyComment[]
+
+  @@index([instrumentId, status])
+  @@index([status, severity])
+}
+
+model DiscrepancyComment {
+  id            String      @id @default(uuid()) @db.Uuid
+  discrepancyId String      @db.Uuid
+  discrepancy   Discrepancy @relation(fields: [discrepancyId], references: [id], onDelete: Cascade)
+  authorId      String?     @db.Uuid // null = system
+  authorRole    String
+  body          String
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([discrepancyId])
+}
+
+// ─── Bank confirmation ───────────────────────────────────────────────────────
+
+model BankConfirmationRequest {
+  id               String            @id @default(uuid()) @db.Uuid
+  instrumentId     String            @db.Uuid
+  instrument       Instrument        @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  bankId           String            @db.Uuid
+  bank             Bank              @relation(fields: [bankId], references: [id])
+  channel          BankChannel       @default(DESK)
+  requestedFields  String[]
+  // Snapshot of what AICTE holds, shown to the bank officer.
+  snapshot         Json
+  status           BankRequestStatus @default(PENDING)
+  requestedById    String            @db.Uuid
+  slaDueAt         DateTime          @db.Timestamptz(3)
+  respondedById    String?           @db.Uuid
+  respondedAt      DateTime?         @db.Timestamptz(3)
+  response         Json?
+  letterDocumentId String?           @db.Uuid
+  failureReason    String?
+  attempts         Int               @default(0)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([bankId, status])
+  @@index([instrumentId])
+}
+
+// ─── Release / refund ────────────────────────────────────────────────────────
+
+model ReleaseRequest {
+  id                 String        @id @default(uuid()) @db.Uuid
+  instrumentId       String        @db.Uuid
+  instrument         Instrument    @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  reason             String
+  status             ReleaseStatus @default(REQUESTED)
+  checklist          Json // [{ code, passed, detail }]
+  checklistPassed    Boolean
+  requestedById      String        @db.Uuid
+  requestedAt        DateTime      @default(now()) @db.Timestamptz(3)
+  recommendedById    String?       @db.Uuid
+  recommendedAt      DateTime?     @db.Timestamptz(3)
+  recommendationNote String?
+  decidedById        String?       @db.Uuid
+  decidedAt          DateTime?     @db.Timestamptz(3)
+  decisionNote       String?
+  executionRef       String?
+  executionDate      DateTime?     @db.Date
+  executedById       String?       @db.Uuid
+  executedAt         DateTime?     @db.Timestamptz(3)
+
+  @@index([instrumentId])
+  @@index([status])
+}
+
+// ─── Alerts ──────────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // REMINDER, ESCALATION, DISCREPANCY, BANK, RELEASE, RENEWAL, DIGEST, SYSTEM
+  title     String
+  body      String
+  link      String?
+  channels  String[] // channels it was delivered on: IN_APP, EMAIL, SMS
+  readAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, readAt])
+}
+
+/// One row per instrument per reminder offset: the unique key makes the daily job idempotent.
+model Reminder {
+  id           String     @id @default(uuid()) @db.Uuid
+  instrumentId String     @db.Uuid
+  instrument   Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  offsetDays   Int
+  dueDate      DateTime   @db.Date
+  sentAt       DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@unique([instrumentId, offsetDays])
+}
+
+/// One row per item per escalation level (idempotent).
+model Escalation {
+  id         String    @id @default(uuid()) @db.Uuid
+  entityType String // INSTRUMENT_SCRUTINY, DISCREPANCY, BANK_REQUEST, RELEASE, OVERDUE_RENEWAL
+  entityId   String    @db.Uuid
+  instrumentId String? @db.Uuid
+  level      Int
+  toRole     Role
+  reason     String
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  resolvedAt DateTime? @db.Timestamptz(3)
+
+  @@unique([entityType, entityId, level])
+  @@index([toRole, resolvedAt])
+}
+
+// ─── Rules & settings ────────────────────────────────────────────────────────
+
+model Rule {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String // RuleCode
+  type          RuleType
+  version       Int
+  config        Json
+  effectiveFrom DateTime @db.Timestamptz(3)
+  source        String
+  note          String?
+  createdById   String?  @db.Uuid
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([code, version])
+  @@index([code, effectiveFrom])
+}
+
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedById String?  @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model MetricBaseline {
+  metricKey   String   @id
+  value       Float
+  note        String?
+  updatedById String?  @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model SavedFilter {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  query     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+// ─── Legacy digitisation ─────────────────────────────────────────────────────
+
+model LegacyBatch {
+  id           String       @id @default(uuid()) @db.Uuid
+  regionId     String       @db.Uuid
+  region       Region       @relation(fields: [regionId], references: [id])
+  uploadedById String       @db.Uuid
+  label        String
+  fileCount    Int
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  items        LegacyItem[]
+}
+
+model LegacyItem {
+  id           String           @id @default(uuid()) @db.Uuid
+  batchId      String           @db.Uuid
+  batch        LegacyBatch      @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  documentId   String           @unique @db.Uuid
+  document     Document         @relation(fields: [documentId], references: [id])
+  fileName     String
+  ocr          Json // OCR result: fields, confidence, raw_text
+  ocrError     String?
+  status       LegacyItemStatus @default(PENDING_REVIEW)
+  instrumentId String?          @db.Uuid
+  reviewedById String?          @db.Uuid
+  reviewedAt   DateTime?        @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@index([batchId, status])
+}
+
+// ─── Tamper-evident audit log (Section 3.5) ──────────────────────────────────
+
+/// Append-only. UPDATE / DELETE / TRUNCATE are blocked by triggers (see migration).
+/// hash = sha256(prevHash + canonicalJson(event)).
+model AuditEvent {
+  seq        BigInt   @id
+  occurredAt DateTime @db.Timestamptz(3)
+  actorId    String?  @db.Uuid
+  actorRole  String? // Role or SYSTEM
+  action     String
+  entityType String
+  entityId   String?
+  ip         String?
+  data       Json
+  prevHash   String
+  hash       String   @unique
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([action])
+  @@index([occurredAt])
+  @@map("audit_events")
+}
