@@ -21,7 +21,10 @@ import { ConflictError, ForbiddenError, NotFoundError } from '../domain/errors.j
 import { instrumentScope, type Principal } from '../domain/scope.js';
 import { computeFieldStates } from '../domain/trust.js';
 import type { Instrument, Prisma } from '../generated/prisma/client.js';
+import { computeValidity } from '../domain/validity.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService, type Db } from '../prisma/prisma.service.js';
+import { RulesService } from '../rules/rules.service.js';
 import { AssertionsService, type AssertionInput } from './assertions.service.js';
 import { SUMMARY_INCLUDE, UNRESOLVED_DISCREPANCY, toSummary } from './instrument-views.js';
 import { TransitionsService } from './transitions.service.js';
@@ -72,6 +75,8 @@ export class InstrumentsService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly engine: DiscrepancyEngine,
+    private readonly notifications: NotificationsService,
+    private readonly rules: RulesService,
   ) {}
 
   /** Loads an instrument the principal is allowed to see, or 404 (never 403, to avoid leaking existence). */
@@ -429,6 +434,11 @@ export class InstrumentsService {
     await this.prisma.$transaction(async (tx) => {
       await this.transitions.transition(tx, inst, 'SUBMITTED', actor);
       await this.afterChange(tx, id, actor);
+      await this.notifications.notifyInstrument(tx, id, ['RO_OFFICER'], {
+        kind: 'SUBMISSION',
+        title: `${inst.refNo} submitted for scrutiny`,
+        body: `A ${inst.replacesInstrumentId ? 'replacement ' : ''}security deposit was submitted and is waiting in your scrutiny queue.`,
+      });
       if (inst.replacesInstrumentId)
         await this.onReplacementSubmitted(tx, inst.replacesInstrumentId, actor);
     });
@@ -468,12 +478,17 @@ export class InstrumentsService {
   }
 
   /** Called when an instrument becomes ACTIVE (validity in Phase 5, renewal completion in Phase 6). */
-  async onActivated(
-    _tx: Prisma.TransactionClient,
-    _inst: Instrument,
-    _actor: Actor,
-  ): Promise<void> {
-    // Extended in later phases.
+  async onActivated(tx: Prisma.TransactionClient, inst: Instrument, _actor: Actor): Promise<void> {
+    const rule = (await this.rules.current(this.clock.now(), tx))['validity.window'];
+    await tx.instrument.update({
+      where: { id: inst.id },
+      data: { validityStatus: computeValidity(inst, this.clock.today(), rule) },
+    });
+    await this.notifications.notifyInstrument(tx, inst.id, ['INSTITUTION_USER', 'RO_OFFICER'], {
+      kind: 'ACTIVATED',
+      title: `${inst.refNo} is now active`,
+      body: `The bank confirmed ${inst.refNo}. It is recorded as an active security deposit held by AICTE.`,
+    });
   }
 
   /** Renewal: the replacement was rejected, so the old instrument is active again (Phase 6). */

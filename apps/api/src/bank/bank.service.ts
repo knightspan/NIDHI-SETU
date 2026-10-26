@@ -21,6 +21,7 @@ import type { Bank, BankConfirmationRequest, Prisma } from '../generated/prisma/
 import { AssertionsService } from '../instruments/assertions.service.js';
 import { InstrumentsService } from '../instruments/instruments.service.js';
 import { TransitionsService } from '../instruments/transitions.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RulesService } from '../rules/rules.service.js';
 import {
@@ -47,6 +48,7 @@ export class BankService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly rules: RulesService,
+    private readonly notifications: NotificationsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {
     this.mockApi = new MockBankApiAdapter({
@@ -126,6 +128,14 @@ export class BankService {
         },
         tx,
       );
+      if (adapter.channel === 'DESK') {
+        await this.notifications.notifyInstrument(tx, instrumentId, ['BANK_OFFICER'], {
+          kind: 'BANK',
+          title: `AICTE requests confirmation of FDR ${inst.fdrNumber ?? ''}`,
+          body: `Please confirm existence, lien in favour of AICTE, maturity date and auto-renewal for FDR ${inst.fdrNumber ?? ''} (${institution.name}) by ${toIso(r.slaDueAt)}.`,
+          link: `/bank-desk/${r.id}`,
+        });
+      }
       return r;
     });
     if (adapter.channel === 'MOCK_API') await this.dispatch(req.id);
@@ -396,6 +406,12 @@ export class BankService {
         outcome.contradictions.join('; '),
       );
       await this.engine.sync(tx, inst.id, actor);
+      await this.notifications.notifyInstrument(tx, inst.id, ['RO_OFFICER', 'INSTITUTION_USER'], {
+        kind: 'BANK',
+        title: `Bank did not confirm ${inst.refNo}`,
+        body: outcome.contradictions.join('\n'),
+        sms: true,
+      });
     }
   }
 

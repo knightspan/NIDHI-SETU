@@ -120,3 +120,26 @@ regions, banks, institutions and users), so files never depend on each other.
 **Decision:** Demo accounts get TOTP secrets derived from their email, printed by `pnpm seed`, and
 `pnpm demo:otp <email>` prints the current code, so judges can sign in without a phone. Real accounts
 always get random secrets through enrolment.
+
+### D-018 · Notification outbox (2026-10-27)
+
+**Decision:** Notifications are rows written in the same transaction as the business change; emails are
+sent afterwards from an outbox (`emailStatus` PENDING → SENT/FAILED) by a debounced in-process flush and
+a once-a-minute BullMQ job. A rolled-back action never emails anyone, and SMTP outages only delay mail.
+
+### D-019 · Reminders after a clock jump (2026-10-27)
+
+**Decision:** When the (demo) clock crosses several reminder offsets at once, every crossed offset is
+recorded (keeping the one-per-offset guarantee) but only the nearest is announced, so nobody gets four
+emails for one instrument on the same day.
+
+### D-020 · Escalation ladder pacing (2026-10-27)
+
+**Decision:** An item escalates to ladder level 1 when its SLA is missed and one level further per
+additional SLA period. Items with a 0-day SLA (overdue renewals) escalate immediately and then weekly.
+
+### D-021 · BullMQ needs a constructed ioredis client under ESM (2026-10-27)
+
+**Context:** BullMQ 6 treats `ioredis` as optional and cannot load it from connection options in native ESM.
+**Decision:** Depend on `ioredis` directly and pass a constructed client (`maxRetriesPerRequest: null`).
+Without Redis (or with `QUEUE_ENABLED=false`) the same jobs run from admin endpoints.

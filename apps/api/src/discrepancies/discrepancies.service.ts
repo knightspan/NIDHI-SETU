@@ -16,6 +16,7 @@ import { instrumentScope, type Principal } from '../domain/scope.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { InstrumentsService } from '../instruments/instruments.service.js';
 import { TransitionsService } from '../instruments/transitions.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RulesService } from '../rules/rules.service.js';
 import { DISCREPANCY_INCLUDE, toDiscrepancyViews } from './discrepancy-views.js';
@@ -29,6 +30,7 @@ export class DiscrepanciesService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly rules: RulesService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(p: Principal, q: DiscrepancyListQuery): Promise<Paged<DiscrepancyView>> {
@@ -109,6 +111,11 @@ export class DiscrepanciesService {
       if (input.returnToInstitution && inst.status === 'UNDER_SCRUTINY') {
         await this.transitions.transition(tx, inst, 'DISCREPANCY_RAISED', actor, input.description);
       }
+      await this.notifications.notifyInstrument(tx, instrumentId, ['INSTITUTION_USER'], {
+        kind: 'DISCREPANCY',
+        title: `AICTE raised a discrepancy on ${inst.refNo}`,
+        body: `[${input.severity}] ${input.description}\nPlease respond in NidhiSetu.`,
+      });
       return { id: d.id };
     });
   }
@@ -122,9 +129,14 @@ export class DiscrepanciesService {
     const open = await this.prisma.discrepancy.count({ where: { instrumentId, status: 'OPEN' } });
     if (open === 0)
       throw new ConflictError('There are no open discrepancies to send to the institution');
-    await this.prisma.$transaction((tx) =>
-      this.transitions.transition(tx, inst, 'DISCREPANCY_RAISED', actorOf(p), note),
-    );
+    await this.prisma.$transaction(async (tx) => {
+      await this.transitions.transition(tx, inst, 'DISCREPANCY_RAISED', actorOf(p), note);
+      await this.notifications.notifyInstrument(tx, instrumentId, ['INSTITUTION_USER'], {
+        kind: 'DISCREPANCY',
+        title: `${inst.refNo} returned to you with ${open} discrepanc${open === 1 ? 'y' : 'ies'}`,
+        body: `Please answer each open discrepancy in NidhiSetu and send the instrument back for scrutiny.${note ? `\nOfficer's note: ${note}` : ''}`,
+      });
+    });
   }
 
   /** Thread message. An institution reply marks an OPEN discrepancy as RESPONDED. */
@@ -205,6 +217,11 @@ export class DiscrepanciesService {
     await this.prisma.$transaction(async (tx) => {
       await this.transitions.transition(tx, inst, 'UNDER_SCRUTINY', actor, note);
       await this.instruments.afterChange(tx, instrumentId, actor);
+      await this.notifications.notifyInstrument(tx, instrumentId, ['RO_OFFICER'], {
+        kind: 'RESPONSE',
+        title: `Institution responded on ${inst.refNo}`,
+        body: `The institution answered the discrepancies and sent ${inst.refNo} back for scrutiny.${note ? `\nNote: ${note}` : ''}`,
+      });
     });
   }
 }

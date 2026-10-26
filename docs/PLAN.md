@@ -173,12 +173,24 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Web: mobile-first bank desk + answer form, bank panel and "send to bank" on the instrument
 - [x] Tests: response evaluation, adapters, desk/API/deny/retry flows, bank scoping
 
-### Phase 5 — Rules, lifecycle, alerts, demo clock
+### Phase 5 — Rules, lifecycle, alerts, demo clock ✅
 
-- [ ] Versioned rules + admin UI + audit
-- [ ] Daily lifecycle job (idempotent reminders), validity status
-- [ ] Notifications (in-app, email, SMS stub), escalation by SLA, daily digest
-- [ ] Demo clock (disabled when `DEMO_MODE=false`)
+- [x] Versioned rules API + admin UI (JSON editor, effective dates, source, history, audit);
+      rule codes as data, placeholders flagged "verify"
+- [x] Lifecycle job: validity (VALID / EXPIRING_SOON / MATURED / OVERDUE_RENEWAL) from dates + clock;
+      reminders T-90/60/30/7 idempotent per instrument per offset (unique key; a clock jump records
+      every crossed offset but announces only the nearest); set-based for large volumes
+- [x] Escalation ladder from SLA rules (one level per missed SLA period, 0-day SLAs weekly),
+      auto-resolution, scoped escalation list
+- [x] Notifications: in-app + email outbox (sent after commit, Mailpit in dev) + SMS stub with
+      masked numbers; hooks on submission, discrepancies, responses, bank requests/answers, activation
+- [x] Daily per-officer digest; BullMQ schedules (lifecycle 00:30 IST, digest 08:00, outbox every
+      minute) when Redis is configured, admin "run now" endpoints otherwise
+- [x] Demo clock (admin UI: +7/30/60/90/365 days, set date, reset) — runs the lifecycle job on change,
+      refused when DEMO_MODE=false
+- [x] Web: demo clock, rules, notifications, escalations, user management
+- [x] Tests: validity, reminder idempotency, escalation levels, clock/validity/reminder/escalation
+      flow, rule publishing, digest, RBAC on admin endpoints
 
 ### Phase 6 — Renewal chain
 

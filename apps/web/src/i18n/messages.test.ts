@@ -18,7 +18,8 @@ function keys(tree: Tree, prefix = ''): string[] {
 }
 
 function placeholders(s: string): string[] {
-  return [...s.matchAll(/\{(\w+)/g)].map((m) => m[1]!).sort();
+  // ICU arguments only: `{name}` or `{name, plural …}` — not plural branch text like `{No offset}`.
+  return [...s.matchAll(/\{(\w+)\s*[,}]/g)].map((m) => m[1]!).sort();
 }
 
 describe('i18n message catalogues', () => {

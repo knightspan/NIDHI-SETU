@@ -6,6 +6,7 @@ import { DAY_MS } from '../domain/dates.js';
 import { evaluateDiscrepancyRules, type Finding } from '../domain/discrepancy-rules.js';
 import { computeFieldStates } from '../domain/trust.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { RulesService } from '../rules/rules.service.js';
 
 /** Statuses whose instrument counts towards an institution's live deposit total. */
@@ -28,12 +29,6 @@ export interface SyncResult {
   resolved: string[];
 }
 
-export type DiscrepancyListener = (
-  tx: Prisma.TransactionClient,
-  instrumentId: string,
-  result: SyncResult,
-) => Promise<void>;
-
 /**
  * Runs the discrepancy rules against an instrument and reconciles the result with stored
  * discrepancies: new findings are raised, cleared automatic findings are auto-resolved.
@@ -41,18 +36,12 @@ export type DiscrepancyListener = (
  */
 @Injectable()
 export class DiscrepancyEngine {
-  private listeners: DiscrepancyListener[] = [];
-
   constructor(
     private readonly rules: RulesService,
     private readonly clock: ClockService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
-
-  /** Other modules (notifications) subscribe to newly raised discrepancies. */
-  onSync(listener: DiscrepancyListener): void {
-    this.listeners.push(listener);
-  }
 
   async findings(tx: Prisma.TransactionClient, instrumentId: string): Promise<Finding[] | null> {
     const inst = await tx.instrument.findUniqueOrThrow({
@@ -214,7 +203,31 @@ export class DiscrepancyEngine {
         ],
         tx,
       );
-      for (const l of this.listeners) await l(tx, instrumentId, result);
+      if (result.created.length) {
+        const inst = await tx.instrument.findUniqueOrThrow({
+          where: { id: instrumentId },
+          select: { refNo: true },
+        });
+        const dup = result.created.filter((c) => c.code === 'DUPLICATE_FDR');
+        await this.notifications.notifyInstrument(
+          tx,
+          instrumentId,
+          ['INSTITUTION_USER', 'RO_OFFICER'],
+          {
+            kind: 'DISCREPANCY',
+            title: `${result.created.length} discrepanc${result.created.length === 1 ? 'y' : 'ies'} detected on ${inst.refNo}`,
+            body: result.created.map((c) => `• [${c.severity}] ${c.description}`).join('\n'),
+            sms: dup.length > 0,
+          },
+        );
+        if (dup.length) {
+          await this.notifications.notifyInstrument(tx, instrumentId, ['BUREAU_OFFICER'], {
+            kind: 'DISCREPANCY',
+            title: `Fraud signal: duplicate FDR on ${inst.refNo}`,
+            body: dup.map((c) => c.description).join('\n'),
+          });
+        }
+      }
     }
 
     // A duplicate FDR is a two-sided fraud signal: flag the other instrument(s) too.

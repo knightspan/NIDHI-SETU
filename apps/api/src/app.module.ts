@@ -15,6 +15,9 @@ import { AllExceptionsFilter } from './common/exception.filter.js';
 import { getConfig } from './config/config.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthController } from './health/health.controller.js';
+import { JobsModule } from './jobs/jobs.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { RulesController } from './rules/rules.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RulesModule } from './rules/rules.module.js';
 
@@ -25,6 +28,7 @@ import { RulesModule } from './rules/rules.module.js';
     ClockModule,
     AuditModule,
     RulesModule,
+    NotificationsModule,
     ThrottlerModule.forRootAsync({
       useFactory: () => {
         const cfg = getConfig();
@@ -39,8 +43,9 @@ import { RulesModule } from './rules/rules.module.js';
     InstrumentsModule,
     ScrutinyModule,
     BankModule,
+    JobsModule.register(),
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, RulesController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },

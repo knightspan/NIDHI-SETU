@@ -424,10 +424,15 @@ model Notification {
   body      String
   link      String?
   channels  String[] // channels it was delivered on: IN_APP, EMAIL, SMS
+  /// Email outbox: PENDING → SENT | FAILED, or SKIPPED (email disabled / not wanted).
+  emailStatus String    @default("SKIPPED")
+  emailError  String?
+  instrumentId String?  @db.Uuid
   readAt    DateTime? @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId, readAt])
+  @@index([emailStatus])
 }
 
 /// One row per instrument per reminder offset: the unique key makes the daily job idempotent.
