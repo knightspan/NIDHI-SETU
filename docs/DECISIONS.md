@@ -70,3 +70,14 @@ msgpackr-extract, unrs-resolver).
 
 **Decision:** The container uses Python 3.12 because OCR engine wheels lag new CPython releases. Starlette's
 test client now recommends `httpx2`, so dev dependencies use it.
+
+### D-011 · Docker-free local stack for development (2026-10-26)
+
+**Context:** The main dev machine has no Docker and no admin rights to install it. Phase 1 onward needs
+PostgreSQL and Redis for migrations and integration tests.
+**Decision:** `scripts/local-stack.mjs` (`pnpm stack:up | stack:down | stack:status`) runs portable
+PostgreSQL 16.14 (`@embedded-postgres/*` binaries, as optional deps so only the matching OS installs), Redis
+8.8.3 (`redis-windows` msys2 build) and Mailpit 1.32 on the same ports and credentials as
+`docker-compose.yml`. Data lives in the git-ignored `.data/` folder.
+**Consequences:** Development and tests work without Docker. Docker Compose remains the supported way to run
+the full demo; the Dockerfiles are validated in CI (`docker compose config`) rather than on this machine.

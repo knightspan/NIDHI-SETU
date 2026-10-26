@@ -36,6 +36,9 @@ pnpm dev          # watch mode for all TS workspaces
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
+No Docker? `pnpm stack:up` starts portable PostgreSQL 16, Redis and Mailpit on the same ports as Compose
+(data in `.data/`; stop with `pnpm stack:down`).
+
 OCR service (Python 3.12+):
 
 ```bash

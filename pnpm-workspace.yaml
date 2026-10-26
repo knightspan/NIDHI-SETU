@@ -12,3 +12,8 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: true
   unrs-resolver: true
+  # Dev-only portable PostgreSQL (scripts/local-stack.mjs); the script only restores binary symlinks.
+  '@embedded-postgres/windows-x64': true
+  '@embedded-postgres/linux-x64': true
+  '@embedded-postgres/darwin-arm64': true
+  '@embedded-postgres/darwin-x64': true
