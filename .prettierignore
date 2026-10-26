@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+apps/api/src/generated
+services/ocr/.venv
+services/ocr/samples
+playwright-report
+test-results
+next-env.d.ts

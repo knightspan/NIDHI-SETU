@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+apps/api/src/generated/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# test artefacts
+playwright-report/
+test-results/
+blob-report/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# local data
+.data/
+*.log
+
+# os / editors
+.DS_Store
+Thumbs.db
+.idea/
+
+# next.js generated
+next-env.d.ts

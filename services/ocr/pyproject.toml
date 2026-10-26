@@ -1,0 +1,17 @@
+[project]
+name = "nidhisetu-ocr"
+version = "0.1.0"
+description = "OCR + rule-based field extraction for FDR scans (NidhiSetu)"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"] # asserts are fine in tests

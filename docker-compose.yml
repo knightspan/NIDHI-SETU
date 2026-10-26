@@ -1,0 +1,111 @@
+# NidhiSetu local stack:  docker compose up --build   then   pnpm seed
+# Every value has a dev default, so no .env is needed locally. Override via .env (see .env.example).
+name: nidhisetu
+
+x-api-env: &api-env
+  NODE_ENV: ${NODE_ENV:-development}
+  DEMO_MODE: ${DEMO_MODE:-true}
+  WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+  API_PORT: 4000
+  DATABASE_URL: postgresql://${POSTGRES_USER:-nidhisetu}:${POSTGRES_PASSWORD:-nidhisetu_dev_password}@postgres:5432/${POSTGRES_DB:-nidhisetu}
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://objectstore:9000
+  S3_REGION: ${S3_REGION:-ap-south-1}
+  S3_BUCKET: ${S3_BUCKET:-nidhisetu-documents}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-nidhisetu}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-nidhisetu_dev_secret}
+  S3_FORCE_PATH_STYLE: 'true'
+  DOCUMENT_ENCRYPTION_KEY: ${DOCUMENT_ENCRYPTION_KEY:-ZGV2LW9ubHkta2V5LWRvLW5vdC11c2UtaW4tcHJvZCE=}
+  DOCUMENT_MAX_MB: ${DOCUMENT_MAX_MB:-10}
+  DOCUMENT_URL_TTL_SECONDS: ${DOCUMENT_URL_TTL_SECONDS:-300}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me-0123456789abcdef}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me-0123456789abcdef}
+  JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+  JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-8h}
+  MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-ZGV2LW9ubHktbWZhLWtleS1kb250LXVzZS1wcm9kISE=}
+  RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+  SMTP_HOST: mailpit
+  SMTP_PORT: 1025
+  SMTP_FROM: ${SMTP_FROM:-NidhiSetu <no-reply@nidhisetu.local>}
+  SMS_ADAPTER: ${SMS_ADAPTER:-stub}
+  BANK_ADAPTER: ${BANK_ADAPTER:-desk}
+  MOCK_BANK_API_LATENCY_MS: ${MOCK_BANK_API_LATENCY_MS:-800}
+  MOCK_BANK_API_FAILURE_RATE: ${MOCK_BANK_API_FAILURE_RATE:-0.1}
+  OCR_URL: http://ocr:8000
+  LLM_EXTRACTION: ${LLM_EXTRACTION:-false}
+  RETENTION_YEARS_CLOSED_RECORDS: ${RETENTION_YEARS_CLOSED_RECORDS:-8}
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nidhisetu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nidhisetu_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nidhisetu}
+    ports: ['5432:5432']
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:8.8.3-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports: ['6379:6379']
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible object store. MinIO no longer publishes images (see docs/DECISIONS.md D-004).
+  objectstore:
+    image: rustfs/rustfs:1.0.4
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: 'true'
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-nidhisetu}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-nidhisetu_dev_secret}
+    ports: ['9000:9000', '9001:9001']
+    volumes: [objdata:/data]
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports: ['1025:1025', '8025:8025']
+
+  ocr:
+    build: { context: ./services/ocr }
+    environment:
+      LLM_EXTRACTION: ${LLM_EXTRACTION:-false}
+    ports: ['8000:8000']
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment: *api-env
+    ports: ['4000:4000']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      objectstore: { condition: service_started }
+      mailpit: { condition: service_started }
+      ocr: { condition: service_started }
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    ports: ['3000:3000']
+    depends_on:
+      api: { condition: service_started }
+
+volumes:
+  pgdata:
+  redisdata:
+  objdata:
