@@ -327,6 +327,8 @@ model Discrepancy {
   instrumentId String               @db.Uuid
   instrument   Instrument           @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
   ruleCode     String // DiscrepancyRuleCode, MANUAL or BANK_DENIED
+  /// Identity of an automatic finding (rule + field + conflicting values); stops duplicates on re-evaluation.
+  key          String?
   field        String?
   severity     Severity
   description  String
@@ -341,6 +343,7 @@ model Discrepancy {
   comments     DiscrepancyComment[]
 
   @@index([instrumentId, status])
+  @@index([instrumentId, key])
   @@index([status, severity])
 }
 

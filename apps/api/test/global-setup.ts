@@ -25,4 +25,14 @@ export default async function setup(): Promise<void> {
     env: { ...process.env, DATABASE_URL: url },
     stdio: 'pipe',
   });
+
+  // Rules v1 (labelled placeholders) and the bank/region master, exactly as `pnpm seed` loads them.
+  const { scriptPrisma } = await import('../src/scripts/db.js');
+  const { seedMaster } = await import('../src/scripts/seed-master.js');
+  const prisma = scriptPrisma(url);
+  try {
+    await seedMaster(prisma);
+  } finally {
+    await prisma.$disconnect();
+  }
 }

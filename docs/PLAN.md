@@ -146,11 +146,19 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
       badges, assertion history, documents, timeline
 - [x] Tests: trust/provenance, file sniffing, allowed actions, full institution flow, scoping (404 not 403)
 
-### Phase 3 — Scrutiny
+### Phase 3 — Scrutiny ✅
 
-- [ ] Officer workspace: document viewer + field list with trust badges
-- [ ] Verify field (OFFICER_VERIFIED), effective value + MISMATCH computation, trust score
-- [ ] Discrepancy rules engine (§6.3) + discrepancy threads; institution response
+- [x] Officer workspace: side-by-side FDR scan viewer + field list with trust badges
+- [x] One-click "verify field" (OFFICER_VERIFIED) and "correct" (officer's reading of the original)
+- [x] "Mark officer-verified" requires every key field verified and every discrepancy closed
+- [x] Discrepancy rules engine — all nine rules of §6.3, each enabled/severity-configurable, with
+      stable keys (no duplicates on re-evaluation; officer-closed findings never re-raised)
+- [x] Auto-resolve when a condition clears; duplicate-FDR fraud signal flags both instruments
+- [x] Versioned rules resolved as of the demo clock (`RulesService`)
+- [x] Discrepancy threads: institution replies (→ RESPONDED), officer resolves/waives with a reason,
+      institution sends the instrument back; reject with a mandatory note
+- [x] Web: scrutiny queue, discrepancies queue, discrepancy panel, data-driven action bar
+- [x] Tests: rules engine versions, all discrepancy rules, full scrutiny loop, role/scope checks
 
 ### Phase 4 — Bank Confirmation Desk
 

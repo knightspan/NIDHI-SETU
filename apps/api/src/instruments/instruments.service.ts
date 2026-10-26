@@ -12,6 +12,8 @@ import {
 import { AuditService } from '../audit/audit.service.js';
 import { actorOf, type Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
+import { DiscrepancyEngine } from '../discrepancies/discrepancy-engine.service.js';
+import { DISCREPANCY_INCLUDE, toDiscrepancyViews } from '../discrepancies/discrepancy-views.js';
 import { allowedActions, type InstrumentAction } from '../domain/actions.js';
 import { toIso } from '../domain/dates.js';
 import { ConflictError, ForbiddenError, NotFoundError } from '../domain/errors.js';
@@ -68,6 +70,7 @@ export class InstrumentsService {
     private readonly transitions: TransitionsService,
     private readonly audit: AuditService,
     private readonly clock: ClockService,
+    private readonly engine: DiscrepancyEngine,
   ) {}
 
   /** Loads an instrument the principal is allowed to see, or 404 (never 403, to avoid leaking existence). */
@@ -279,6 +282,14 @@ export class InstrumentsService {
       })),
       chain: await this.renewalChain(inst.id),
       replacedBy: inst.replacedBy,
+      discrepancies: await toDiscrepancyViews(
+        this.prisma,
+        await this.prisma.discrepancy.findMany({
+          where: { instrumentId: inst.id },
+          include: DISCREPANCY_INCLUDE,
+          orderBy: { createdAt: 'desc' },
+        }),
+      ),
       allowedActions: await this.actionsFor(p, inst),
     };
   }
@@ -440,16 +451,22 @@ export class InstrumentsService {
     });
   }
 
-  /**
-   * Hook run after anything that can change an instrument's evidence. Later phases plug in
-   * discrepancy evaluation here.
-   */
-  async afterChange(_tx: Prisma.TransactionClient, _id: string, _actor: Actor): Promise<void> {
-    // Extended in Phase 3 (discrepancy rules).
+  /** Hook run after anything that can change an instrument's evidence: re-run discrepancy rules. */
+  async afterChange(tx: Prisma.TransactionClient, id: string, actor: Actor): Promise<void> {
+    await this.engine.sync(tx, id, actor);
   }
 
   /** Renewal: the old instrument waits for its replacement (Phase 6). */
   async onReplacementSubmitted(
+    _tx: Prisma.TransactionClient,
+    _oldId: string,
+    _actor: Actor,
+  ): Promise<void> {
+    // Extended in Phase 6.
+  }
+
+  /** Renewal: the replacement was rejected, so the old instrument is active again (Phase 6). */
+  async onReplacementRejected(
     _tx: Prisma.TransactionClient,
     _oldId: string,
     _actor: Actor,

@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
 import { InstrumentsModule } from './instruments/instruments.module.js';
+import { ScrutinyModule } from './discrepancies/scrutiny.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CsrfMiddleware } from './auth/csrf.middleware.js';
@@ -14,6 +15,7 @@ import { getConfig } from './config/config.js';
 import { ConfigModule } from './config/config.module.js';
 import { HealthController } from './health/health.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { RulesModule } from './rules/rules.module.js';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     ClockModule,
     AuditModule,
+    RulesModule,
     ThrottlerModule.forRootAsync({
       useFactory: () => {
         const cfg = getConfig();
@@ -33,6 +36,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     AuthModule,
     AdminModule,
     InstrumentsModule,
+    ScrutinyModule,
   ],
   controllers: [HealthController],
   providers: [

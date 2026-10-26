@@ -7,3 +7,4 @@ export * from './rules.js';
 export * from './fields.js';
 export * from './schemas/auth.js';
 export * from './schemas/instrument.js';
+export * from './schemas/scrutiny.js';
