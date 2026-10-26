@@ -19,6 +19,7 @@ import { JobsModule } from './jobs/jobs.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { RulesController } from './rules/rules.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ReleasesModule } from './releases/releases.module.js';
 import { RulesModule } from './rules/rules.module.js';
 
 @Module({
@@ -43,6 +44,7 @@ import { RulesModule } from './rules/rules.module.js';
     InstrumentsModule,
     ScrutinyModule,
     BankModule,
+    ReleasesModule,
     JobsModule.register(),
   ],
   controllers: [HealthController, RulesController],

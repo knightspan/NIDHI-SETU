@@ -522,5 +522,61 @@
     "created": "User created",
     "updated": "User updated",
     "mfaReset": "MFA reset — the user enrols again at next sign-in"
+  },
+  "releases": {
+    "title": "Releases",
+    "subtitle": "Release / refund requests and where each one stands",
+    "panelTitle": "Release / refund",
+    "request": "Request release",
+    "requestTitle": "Request release of this deposit",
+    "requestHelp": "Explain why the deposit is no longer needed. The preconditions below are checked automatically; an officer can only recommend once they all pass.",
+    "reason": "Reason for release",
+    "checklist": "Precondition checklist",
+    "checklistPassed": "All preconditions met",
+    "checklistFailed": "{count, plural, one {# precondition not met} other {# preconditions not met}}",
+    "requested": "Release requested",
+    "recommend": "Recommend",
+    "decline": "Decline",
+    "approve": "Approve release",
+    "reject": "Reject release",
+    "execute": "Record execution",
+    "executeTitle": "Record how the deposit was discharged",
+    "executeHelp": "NidhiSetu does not move money. Record the reference and date of the discharge completed outside the portal.",
+    "executionRef": "Execution reference",
+    "executionDate": "Execution date",
+    "decisionNote": "Note",
+    "makerChecker": "Maker-checker: the officer who recommended a release cannot approve it.",
+    "done": "Saved",
+    "steps": {
+      "REQUESTED": "Requested",
+      "RECOMMENDED": "Recommended",
+      "APPROVED": "Approved",
+      "EXECUTED": "Released",
+      "REJECTED": "Rejected"
+    },
+    "statuses": {
+      "REQUESTED": "Awaiting recommendation",
+      "RECOMMENDED": "Awaiting decision",
+      "APPROVED": "Awaiting execution",
+      "EXECUTED": "Released",
+      "REJECTED": "Rejected"
+    },
+    "by": "{who} · {when}",
+    "openOnly": "In progress",
+    "all": "All",
+    "empty": "No release requests.",
+    "colInstrument": "Instrument",
+    "colAmount": "Amount",
+    "colStatus": "Status",
+    "colRequested": "Requested",
+    "colChecklist": "Checklist",
+    "checks": {
+      "NO_OPEN_DISCREPANCIES": "No open discrepancies",
+      "BANK_CONFIRMED": "Bank confirmation complete",
+      "NOC_UPLOADED": "NOC uploaded",
+      "NO_PENDING_RENEWAL": "No renewal in progress",
+      "MIN_HOLDING_PERIOD": "Minimum holding period",
+      "DEPOSIT_NOT_REQUIRED_OR_REPLACED": "Deposit no longer required"
+    }
   }
 }

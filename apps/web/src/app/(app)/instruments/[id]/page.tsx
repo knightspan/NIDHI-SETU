@@ -8,6 +8,7 @@ import { DocumentsPanel } from '@/components/instrument/documents-panel';
 import { FieldsPanel } from '@/components/instrument/fields-panel';
 import { InstrumentHeader } from '@/components/instrument/header';
 import { InstitutionCard } from '@/components/instrument/institution-card';
+import { ReleasePanel } from '@/components/instrument/release-panel';
 import { ScrutinyWorkspace } from '@/components/instrument/scrutiny-workspace';
 import { ChainPanel, TimelinePanel } from '@/components/instrument/timeline-panel';
 import { useInstrument } from '@/components/instrument/use-instrument';
@@ -34,6 +35,7 @@ export default function InstrumentPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {!workspace && <FieldsPanel inst={inst} />}
+          <ReleasePanel inst={inst} />
           {showDiscrepancies && <DiscrepanciesPanel inst={inst} />}
           <BankPanel inst={inst} canRetry={can(me, 'bank:request')} />
           <DocumentsPanel inst={inst} />

@@ -204,9 +204,17 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Web: renewal form pre-filled with the next term, renewals page
 - [x] Tests: three-deep chain with a rejected attempt, scoping and state guards
 
-### Phase 7 — Release workflow
+### Phase 7 — Release workflow ✅
 
-- [ ] Request → auto checklist → recommend → approve (maker-checker) → finance execution; status timeline
+- [x] Institution requests release (ACTIVE → RELEASE_REQUESTED); configurable precondition checklist
+      evaluated automatically and stored (open discrepancies, bank confirmation, NOC, renewal in flight,
+      minimum holding period, deposit no longer required)
+- [x] RO/Bureau recommend (checklist re-evaluated, must pass) or decline (→ RELEASE_REJECTED → ACTIVE)
+- [x] Competent authority approves or rejects; maker-checker enforced in the domain layer
+      (recommender ≠ approver ≠ requester) and in allowed actions; SYS_ADMIN has no approval permission
+- [x] Finance records execution reference + date (portal never moves money) → RELEASED
+- [x] Status timeline visible to the institution; releases queue; notifications at every step
+- [x] Tests: checklist rules, maker-checker, full flow, segregation of duties, decline, scoping
 
 ### Phase 8 — Dashboard & reports
 

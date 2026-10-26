@@ -9,3 +9,4 @@ export * from './schemas/auth.js';
 export * from './schemas/instrument.js';
 export * from './schemas/scrutiny.js';
 export * from './schemas/bank.js';
+export * from './schemas/release.js';

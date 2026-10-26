@@ -14,6 +14,7 @@ import {
 } from '../enums.js';
 import { IFSC_REGEX, isoDate } from '../fields.js';
 import type { BankRequestView } from './bank.js';
+import type { ReleaseView } from './release.js';
 import type { DiscrepancyView } from './scrutiny.js';
 
 /** What an institution declares about an instrument (all become DECLARED assertions). */
@@ -172,6 +173,7 @@ export interface InstrumentDetail extends InstrumentSummary {
   replacedBy: { id: string; refNo: string; status: LifecycleStatus } | null;
   discrepancies: DiscrepancyView[];
   bankRequests: BankRequestView[];
+  releases: ReleaseView[];
   /** Actions the current user may take right now (computed by the API). */
   allowedActions: string[];
 }
