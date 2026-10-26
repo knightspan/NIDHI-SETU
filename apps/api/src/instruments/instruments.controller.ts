@@ -60,6 +60,18 @@ export class InstrumentsController {
     return this.instruments.create(user, body);
   }
 
+  /** Submit a renewal / replacement for an ACTIVE instrument (creates a linked DRAFT). */
+  @RequirePermission('renewal:submit')
+  @Post(':id/renewal')
+  @ApiZodBody(InstrumentDeclarationSchema)
+  renew(
+    @CurrentUser() user: Principal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(InstrumentDeclarationSchema)) body: InstrumentDeclaration,
+  ) {
+    return this.instruments.createReplacement(user, id, body);
+  }
+
   @RequirePermission('instrument:write_own')
   @Patch(':id')
   @ApiZodBody(InstrumentDeclarationSchema)

@@ -192,9 +192,17 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Tests: validity, reminder idempotency, escalation levels, clock/validity/reminder/escalation
       flow, rule publishing, digest, RBAC on admin endpoints
 
-### Phase 6 — Renewal chain
+### Phase 6 — Renewal chain ✅
 
-- [ ] Replacement linked via `replaces_instrument_id`; chain timeline; old closes on new BANK_CONFIRMED
+- [x] `POST /instruments/:id/renewal` creates a DRAFT linked through `replacesInstrumentId` (one live
+      replacement at a time; rejected attempts are detached so a new one can be filed)
+- [x] Submitting the replacement moves the old instrument ACTIVE → RENEWAL_PENDING (validity stays
+      MATURED, never OVERDUE, while the renewal is in flight)
+- [x] Old instrument closes (RENEWAL_PENDING → RENEWED) only when the replacement is bank-confirmed;
+      a rejected replacement returns the old one to ACTIVE
+- [x] Chain timeline (oldest → newest) on every instrument of the chain; renewals queue
+- [x] Web: renewal form pre-filled with the next term, renewals page
+- [x] Tests: three-deep chain with a rejected attempt, scoping and state guards
 
 ### Phase 7 — Release workflow
 

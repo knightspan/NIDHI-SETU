@@ -10,7 +10,7 @@ import {
   type Paged,
 } from '@nidhisetu/shared';
 import { AuditService } from '../audit/audit.service.js';
-import { actorOf, type Actor } from '../common/actor.js';
+import { SYSTEM_ACTOR, actorOf, type Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
 import { bankRequestsForInstrument } from '../bank/bank-views.js';
 import { DiscrepancyEngine } from '../discrepancies/discrepancy-engine.service.js';
@@ -468,36 +468,112 @@ export class InstrumentsService {
     await this.engine.sync(tx, id, actor);
   }
 
-  /** Renewal: the old instrument waits for its replacement (Phase 6). */
-  async onReplacementSubmitted(
-    _tx: Prisma.TransactionClient,
-    _oldId: string,
-    _actor: Actor,
-  ): Promise<void> {
-    // Extended in Phase 6.
+  /**
+   * Renewal / replacement (Section 7 · cap 5): the institution declares a new instrument linked to
+   * an ACTIVE one. It starts as a DRAFT so the scan can be attached; submitting it moves the old
+   * instrument to RENEWAL_PENDING.
+   */
+  async createReplacement(
+    p: Principal,
+    oldId: string,
+    d: InstrumentDeclaration,
+  ): Promise<{ id: string; refNo: string }> {
+    const old = await this.getScoped(p, oldId);
+    await this.assertAction(p, old, 'renew');
+    const draft = await this.prisma.instrument.findFirst({
+      where: { replacesInstrumentId: oldId, status: { not: 'REJECTED' } },
+    });
+    if (draft) {
+      throw new ConflictError(
+        `A replacement (${draft.refNo}) already exists for ${old.refNo}`,
+        'ReplacementExists',
+      );
+    }
+    // A rejected earlier attempt must not block the unique link: detach it first.
+    await this.prisma.instrument.updateMany({
+      where: { replacesInstrumentId: oldId, status: 'REJECTED' },
+      data: { replacesInstrumentId: null },
+    });
+    return this.create(p, d, { replacesInstrumentId: oldId });
   }
 
-  /** Called when an instrument becomes ACTIVE (validity in Phase 5, renewal completion in Phase 6). */
+  /** Renewal: the old instrument waits for its replacement. */
+  async onReplacementSubmitted(
+    tx: Prisma.TransactionClient,
+    oldId: string,
+    actor: Actor,
+  ): Promise<void> {
+    const old = await tx.instrument.findUniqueOrThrow({ where: { id: oldId } });
+    if (old.status !== 'ACTIVE') return;
+    await this.transitions.transition(tx, old, 'RENEWAL_PENDING', actor, 'Replacement submitted');
+    const rule = (await this.rules.current(this.clock.now(), tx))['validity.window'];
+    await tx.instrument.update({
+      where: { id: oldId },
+      data: {
+        validityStatus: computeValidity(
+          { ...old, status: 'RENEWAL_PENDING' },
+          this.clock.today(),
+          rule,
+        ),
+      },
+    });
+  }
+
+  /** Called when an instrument becomes ACTIVE: validity, renewal completion, notifications. */
   async onActivated(tx: Prisma.TransactionClient, inst: Instrument, _actor: Actor): Promise<void> {
     const rule = (await this.rules.current(this.clock.now(), tx))['validity.window'];
     await tx.instrument.update({
       where: { id: inst.id },
       data: { validityStatus: computeValidity(inst, this.clock.today(), rule) },
     });
+    let renewedRef: string | null = null;
+    if (inst.replacesInstrumentId) {
+      // The old instrument closes only now that its replacement is bank-confirmed.
+      const old = await tx.instrument.findUniqueOrThrow({
+        where: { id: inst.replacesInstrumentId },
+      });
+      if (old.status === 'RENEWAL_PENDING') {
+        await this.transitions.transition(
+          tx,
+          old,
+          'RENEWED',
+          SYSTEM_ACTOR,
+          `Replaced by ${inst.refNo}`,
+        );
+        await tx.instrument.update({ where: { id: old.id }, data: { validityStatus: null } });
+        renewedRef = old.refNo;
+      }
+    }
     await this.notifications.notifyInstrument(tx, inst.id, ['INSTITUTION_USER', 'RO_OFFICER'], {
-      kind: 'ACTIVATED',
-      title: `${inst.refNo} is now active`,
-      body: `The bank confirmed ${inst.refNo}. It is recorded as an active security deposit held by AICTE.`,
+      kind: renewedRef ? 'RENEWAL' : 'ACTIVATED',
+      title: renewedRef ? `${renewedRef} renewed by ${inst.refNo}` : `${inst.refNo} is now active`,
+      body: renewedRef
+        ? `The bank confirmed the replacement ${inst.refNo}. ${renewedRef} is closed as renewed.`
+        : `The bank confirmed ${inst.refNo}. It is recorded as an active security deposit held by AICTE.`,
     });
   }
 
-  /** Renewal: the replacement was rejected, so the old instrument is active again (Phase 6). */
+  /** Renewal: the replacement was rejected, so the old instrument is active again. */
   async onReplacementRejected(
-    _tx: Prisma.TransactionClient,
-    _oldId: string,
+    tx: Prisma.TransactionClient,
+    oldId: string,
     _actor: Actor,
   ): Promise<void> {
-    // Extended in Phase 6.
+    const old = await tx.instrument.findUniqueOrThrow({ where: { id: oldId } });
+    if (old.status !== 'RENEWAL_PENDING') return;
+    await this.transitions.transition(tx, old, 'ACTIVE', SYSTEM_ACTOR, 'Replacement rejected');
+    const rule = (await this.rules.current(this.clock.now(), tx))['validity.window'];
+    await tx.instrument.update({
+      where: { id: oldId },
+      data: {
+        validityStatus: computeValidity({ ...old, status: 'ACTIVE' }, this.clock.today(), rule),
+      },
+    });
+    await this.notifications.notifyInstrument(tx, oldId, ['INSTITUTION_USER'], {
+      kind: 'RENEWAL',
+      title: `Replacement for ${old.refNo} was rejected`,
+      body: `${old.refNo} is active again and still needs a valid renewal or replacement.`,
+    });
   }
 
   isStatus(inst: Instrument, ...s: LifecycleStatus[]): boolean {

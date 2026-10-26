@@ -345,7 +345,11 @@
     }
   },
   "renewals": {
-    "renew": "Submit renewal / replacement"
+    "renew": "Submit renewal / replacement",
+    "title": "Renewals",
+    "subtitle": "Deposits expiring soon, matured, overdue for renewal or waiting for their replacement to be confirmed",
+    "institutionHint": "Open an instrument and choose “Submit renewal / replacement” to file the new FDR. The old one stays active until the bank confirms the new one.",
+    "empty": "Nothing needs renewing right now."
   },
   "bank": {
     "deskTitle": "Bank Confirmation Desk",
