@@ -553,3 +553,11 @@ model AuditEvent {
   @@index([occurredAt])
   @@map("audit_events")
 }
+
+// ─── Counters (human reference numbers) ──────────────────────────────────────
+
+/// Atomic counters, e.g. "instrument-2026" → last NS-2026-xxxxxx number issued.
+model Counter {
+  name  String @id
+  value Int
+}

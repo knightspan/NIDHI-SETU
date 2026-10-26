@@ -47,6 +47,7 @@ export function Label({
  * `children` receives the props to spread onto the control.
  */
 export function Field({
+  id: fixedId,
   label,
   hint,
   error,
@@ -54,6 +55,8 @@ export function Field({
   className,
   children,
 }: {
+  /** Fixed control id (e.g. for focusing the first invalid field); generated otherwise. */
+  id?: string;
   label: ReactNode;
   hint?: ReactNode;
   error?: string;
@@ -66,7 +69,8 @@ export function Field({
     required?: boolean;
   }) => ReactNode;
 }) {
-  const id = useId();
+  const generated = useId();
+  const id = fixedId ?? generated;
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;

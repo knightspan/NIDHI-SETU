@@ -6,3 +6,4 @@ export * from './permissions.js';
 export * from './rules.js';
 export * from './fields.js';
 export * from './schemas/auth.js';
+export * from './schemas/instrument.js';

@@ -2,6 +2,7 @@ import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
+import { InstrumentsModule } from './instruments/instruments.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CsrfMiddleware } from './auth/csrf.middleware.js';
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     }),
     AuthModule,
     AdminModule,
+    InstrumentsModule,
   ],
   controllers: [HealthController],
   providers: [

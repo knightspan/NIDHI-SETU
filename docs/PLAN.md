@@ -134,11 +134,17 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Seed: regions, 8 banks, 60 institutions, rules v1, one demo user per role; `demo:otp` helper
 - [x] Tests: state machine, scoping, audit chain (incl. tamper + concurrency), auth/MFA, RBAC
 
-### Phase 2 — Institution module
+### Phase 2 — Institution module ✅
 
-- [ ] Submit/edit draft instrument, DECLARED assertions
-- [ ] Document upload (type sniffing, size limit, sha256, AES-GCM, versioning), signed download, download audit
-- [ ] Institution UI: my instruments, new instrument form, documents panel
+- [x] Declare / edit / delete DRAFT instruments; every declared value is a DECLARED assertion
+- [x] Effective values, trust score and mismatch count recomputed from assertions on every change
+- [x] Shared state-machine enforcement with optimistic concurrency, transition log, audit (409 on illegal moves)
+- [x] Documents: magic-byte type sniffing, size limit, sha256, AES-256-GCM before storage (fs or S3),
+      versioning per type, signed short-lived download/preview links, every download audited
+- [x] Server-computed `allowedActions` per role × state × separation of duties
+- [x] Web: instrument list (search + filters in the URL), declaration form, detail page with trust
+      badges, assertion history, documents, timeline
+- [x] Tests: trust/provenance, file sniffing, allowed actions, full institution flow, scoping (404 not 403)
 
 ### Phase 3 — Scrutiny
 
