@@ -94,6 +94,16 @@ export class NotificationsService implements OnModuleDestroy {
     return { institutionId: i.institutionId, regionId: i.institution.regionId, bankId: i.bankId };
   }
 
+  /**
+   * Bulk imports (the demo seed) replay years of history; notifications about events before this
+   * instant would only flood inboxes with stale items, so they are not created.
+   */
+  quietBefore: Date | null = null;
+
+  private quiet(): boolean {
+    return this.quietBefore !== null && this.clock.now() < this.quietBefore;
+  }
+
   /** Notifies the in-scope holders of `roles` about an instrument. */
   async notifyInstrument(
     db: Db,
@@ -101,6 +111,7 @@ export class NotificationsService implements OnModuleDestroy {
     roles: readonly Role[],
     msg: NotificationMessage,
   ): Promise<number> {
+    if (this.quiet()) return 0;
     const userIds = await this.usersFor(db, roles, await this.scopeOf(db, instrumentId));
     return this.notifyUsers(db, userIds, {
       ...msg,
@@ -110,6 +121,7 @@ export class NotificationsService implements OnModuleDestroy {
   }
 
   async notifyUsers(db: Db, userIds: readonly string[], msg: NotificationMessage): Promise<number> {
+    if (this.quiet()) return 0;
     const unique = [...new Set(userIds)];
     if (unique.length === 0) return 0;
     const email = this.mail.enabled && !msg.inAppOnly;
@@ -144,6 +156,7 @@ export class NotificationsService implements OnModuleDestroy {
     db: Db,
     items: { userIds: readonly string[]; msg: NotificationMessage }[],
   ): Promise<number> {
+    if (this.quiet()) return 0;
     const email = this.mail.enabled;
     const now = this.clock.now();
     const rows: Prisma.NotificationCreateManyInput[] = [];

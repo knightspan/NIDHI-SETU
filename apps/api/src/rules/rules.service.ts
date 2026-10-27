@@ -29,8 +29,9 @@ export class RulesService {
   ) {}
 
   private async versions(db: Db = this.prisma): Promise<RuleVersionLike[]> {
-    if (db === this.prisma && this.cache && Date.now() - this.cache.at < CACHE_MS)
-      return this.cache.versions;
+    // Rules change rarely and every change clears the cache, so reads inside transactions use it
+    // too (each status change would otherwise re-read the whole rule table).
+    if (this.cache && Date.now() - this.cache.at < CACHE_MS) return this.cache.versions;
     const versions = await db.rule.findMany({
       select: { code: true, version: true, effectiveFrom: true, config: true },
     });
@@ -94,6 +95,7 @@ export class RulesService {
       );
       return rule;
     };
+    this.cache = null;
     const rule = tx ? await run(tx) : await this.prisma.$transaction(run);
     this.cache = null;
     return rule;

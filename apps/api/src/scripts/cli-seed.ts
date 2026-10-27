@@ -1,4 +1,5 @@
 /** `pnpm seed` entry point. */
+import './seed-env.js';
 import { scriptPrisma } from './db.js';
 import { printCredentials, seedAll } from './seed.js';
 

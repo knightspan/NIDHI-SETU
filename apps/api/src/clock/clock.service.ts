@@ -18,6 +18,8 @@ interface DemoClockSetting {
 export class ClockService {
   private offsetDays = 0;
   private loadedAt = 0;
+  /** Set by bulk imports (the demo seed) to move through time without touching the database. */
+  private pinned = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,6 +32,7 @@ export class ClockService {
 
   /** Re-reads the offset if stale. Called per request and at the start of each job. */
   async sync(force = false): Promise<void> {
+    if (this.pinned) return;
     if (!this.demoMode) {
       this.offsetDays = 0;
       return;
@@ -57,6 +60,21 @@ export class ClockService {
 
   get offset(): number {
     return this.offsetDays;
+  }
+
+  /**
+   * In-memory "today" for bulk imports in this process only (the demo seed replays years of history
+   * day by day). `null` returns to the stored setting.
+   */
+  simulate(isoDate: string | null): void {
+    if (isoDate === null) {
+      this.pinned = false;
+      this.loadedAt = 0;
+      return;
+    }
+    const realToday = dateOnly(istDateIso(new Date()));
+    this.offsetDays = Math.round((dateOnly(isoDate).getTime() - realToday.getTime()) / DAY_MS);
+    this.pinned = true;
   }
 
   /** Sets the simulated "today". Returns the new offset in days. */

@@ -12,12 +12,13 @@
     "test": "prisma generate && vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "seed": "tsx src/scripts/cli-seed.ts",
-    "demo:reset": "tsx src/scripts/cli-demo-reset.ts",
+    "seed": "pnpm -s build:scripts && node dist/scripts/cli-seed.js",
+    "demo:reset": "pnpm -s build:scripts && node dist/scripts/cli-demo-reset.js",
     "demo:otp": "tsx src/scripts/demo-otp.ts",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
-    "test:coverage": "vitest run --project unit --coverage"
+    "test:coverage": "vitest run --project unit --coverage",
+    "build:scripts": "tsc -p tsconfig.build.json --incremental"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

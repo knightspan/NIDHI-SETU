@@ -11,7 +11,7 @@ import {
   type StoredAuditEvent,
 } from '../domain/audit-hash.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { PrismaService, type Db } from '../prisma/prisma.service.js';
+import { PrismaService, beforeCommit, type Db } from '../prisma/prisma.service.js';
 
 /** Advisory lock key that serialises appends to the hash chain. */
 const AUDIT_LOCK_KEY = 726_265;
@@ -44,10 +44,32 @@ export class AuditService {
    * Appends events to the chain. Pass the caller's transaction so the audit row commits atomically
    * with the change it describes; otherwise a new transaction is used.
    */
+  /** Audit inputs waiting for their transaction's pre-commit hook. */
+  private readonly pending = new WeakMap<object, AuditInput[]>();
+
   async record(input: AuditInput | AuditInput[], tx?: Prisma.TransactionClient): Promise<void> {
     const inputs = Array.isArray(input) ? input : [input];
     if (inputs.length === 0) return;
-    if (tx) return this.append(tx, inputs);
+    if (tx) {
+      // Appended just before the transaction commits (keeps the chain lock short); falls back to
+      // appending now for transactions not opened through PrismaService.
+      const pending = this.pending.get(tx);
+      if (pending) {
+        pending.push(...inputs);
+        return;
+      }
+      const queued = [...inputs];
+      if (
+        beforeCommit(tx, () => {
+          this.pending.delete(tx);
+          return this.append(tx, queued);
+        })
+      ) {
+        this.pending.set(tx, queued);
+        return;
+      }
+      return this.append(tx, inputs);
+    }
     await this.prisma.$transaction((t) => this.append(t, inputs), { timeout: 60_000 });
   }
 

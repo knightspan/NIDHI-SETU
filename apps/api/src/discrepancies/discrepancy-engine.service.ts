@@ -43,6 +43,16 @@ export class DiscrepancyEngine {
     private readonly notifications: NotificationsService,
   ) {}
 
+  private banksCache: { at: number; codes: { code: string }[] } | null = null;
+
+  /** The bank master changes rarely; a few seconds of caching saves a query per evaluation. */
+  private async bankCodes(tx: Prisma.TransactionClient): Promise<{ code: string }[]> {
+    if (this.banksCache && Date.now() - this.banksCache.at < 5_000) return this.banksCache.codes;
+    const codes = await tx.bank.findMany({ select: { code: true } });
+    this.banksCache = { at: Date.now(), codes };
+    return codes;
+  }
+
   async findings(tx: Prisma.TransactionClient, instrumentId: string): Promise<Finding[] | null> {
     const inst = await tx.instrument.findUniqueOrThrow({
       where: { id: instrumentId },
@@ -95,7 +105,7 @@ export class DiscrepancyEngine {
         })
       : [];
 
-    const banks = await tx.bank.findMany({ select: { code: true } });
+    const banks = await this.bankCodes(tx);
 
     return evaluateDiscrepancyRules({
       states: computeFieldStates(inst.assertions),

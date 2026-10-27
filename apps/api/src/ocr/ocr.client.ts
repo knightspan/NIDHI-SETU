@@ -14,6 +14,7 @@ export class OcrClient {
     fileName: string,
     mimeType: string,
   ): Promise<{ result: OcrServiceResult | null; error: string | null }> {
+    if (!this.config.OCR_URL) return { result: null, error: 'OCR is disabled (OCR_URL is empty)' };
     try {
       const form = new FormData();
       form.set('file', new Blob([new Uint8Array(file)], { type: mimeType }), fileName);
