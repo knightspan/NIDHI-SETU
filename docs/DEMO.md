@@ -79,7 +79,9 @@ pnpm tamper
 ```
 
 It shows the database refusing an ordinary edit of an audit row, then simulates an insider who
-disables the protection and edits one event — and the chain check pinpoints the altered event. Run
+disables the protection and edits one event — the chain check pinpoints the altered event. It then
+recomputes every later hash so the chain looks consistent again, and the daily **signed anchor** (whose
+key is not in the database) still exposes the rewrite. Run
 **Verify audit chain** again in the browser to see the break. `pnpm demo:reset` restores a clean chain.
 
 ## 8. Legacy records (optional, 1 min)

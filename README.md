@@ -87,7 +87,7 @@ pnpm install && pnpm seed      # loads the fictional demo portfolio (runs inside
 | Mailpit (dev email) | http://localhost:8025          |
 | OCR service         | http://localhost:8000/health   |
 
-`pnpm demo:reset` wipes and reseeds the demo (about 30 s). The seed replays five years of history
+`pnpm demo:reset` wipes and reseeds the demo (under 30 s). The seed replays five years of history
 through the real services on a simulated clock: 60 institutions, ~130 deposits in every lifecycle and
 validity state, renewal chains, releases at each stage, a duplicate-FDR fraud case and legacy records.
 
@@ -136,7 +136,7 @@ A 10-minute walkthrough is in **[docs/DEMO.md](docs/DEMO.md)**.
 | `pnpm --filter @nidhisetu/api test:coverage` | Domain logic coverage (≈97 % statements; CI gate 80 %)                                                                          |
 | `pnpm e2e`                                   | Playwright, one spec per PS scenario (needs the stack running; resets demo data). `PW_CHANNEL=msedge` uses an installed browser |
 | `pnpm load-test`                             | 10 000 active deposits in a separate DB; the lifecycle job must finish in < 60 s (≈4 s here)                                    |
-| `pnpm tamper`                                | Shows the database refusing an audit edit, then a privileged edit being caught by the chain                                     |
+| `pnpm tamper`                                | Database refuses an audit edit; a privileged edit is caught by the chain, a full rewrite by the signed anchors                  |
 | `cd services/ocr && pytest`                  | OCR extraction, including all 10 synthetic samples                                                                              |
 | `pnpm lint && pnpm typecheck`                | ESLint (type-aware) and TypeScript strict across the workspace                                                                  |
 

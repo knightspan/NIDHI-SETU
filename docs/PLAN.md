@@ -247,8 +247,12 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] `AicteApprovalAdapter` + mock with master-drift comparison; retention review endpoint
 - [x] `docs/SECURITY.md`, `docs/DPDP.md`
 
-### Phase 11 — Seed, E2E, perf, docs
+### Phase 11 — Seed, E2E, perf, docs ✅
 
-- [ ] `pnpm seed` (60 institutions, ~150 instruments, 8 banks, users per role), `pnpm demo:reset` < 30 s
-- [ ] Playwright E2E per PS scenario; load seed (10k instruments, reminder job < 60 s)
-- [ ] README, `docs/DEMO.md`; harsh-judge self-review; `docs/KNOWN_LIMITATIONS.md`
+- [x] `pnpm seed`: 60 institutions, 132 instruments replayed through the real services over ~5 years
+      (every lifecycle and validity state, chains, releases, fraud pair, legacy), 8 banks, users per
+      role; `pnpm demo:reset` ≈ 10–30 s
+- [x] Playwright E2E per PS scenario (6/6); RBAC matrix over every route × role
+- [x] `pnpm load-test`: 10k instruments, lifecycle job ≈ 4–5 s (budget 60 s); read paths < 1 s
+- [x] Domain coverage ≈ 97 % (gate 80 %); `pnpm tamper`
+- [x] README, `docs/DEMO.md`; harsh-judge self-review → top 5 fixed; `docs/KNOWN_LIMITATIONS.md`

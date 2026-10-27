@@ -171,6 +171,9 @@ model User {
   email          String       @unique
   name           String
   passwordHash   String
+  /// Set when an admin issues a temporary password: the user must choose a new one first.
+  mustChangePassword Boolean   @default(false)
+  passwordChangedAt  DateTime? @db.Timestamptz(3)
   role           Role
   regionId       String?      @db.Uuid
   region         Region?      @relation(fields: [regionId], references: [id])

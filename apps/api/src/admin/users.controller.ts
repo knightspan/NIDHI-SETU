@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ROLES, ROLE_SCOPE } from '@nidhisetu/shared';
@@ -153,5 +154,34 @@ export class UsersController {
       );
       return { ok: true };
     });
+  }
+
+  /**
+   * Issues a one-time temporary password (shown once to the admin, never stored or logged in
+   * clear). The user must replace it at next sign-in; existing sessions end now.
+   */
+  @RequirePermission('user:manage')
+  @Post(':id/reset-password')
+  @HttpCode(200)
+  async resetPassword(@CurrentUser() me: Principal, @Param('id', ParseUUIDPipe) id: string) {
+    if (id === me.id)
+      throw new InvalidInputError('Change your own password from your account page');
+    const temporaryPassword = `${randomBytes(12).toString('base64url')}7k`;
+    const passwordHash = await hashPassword(temporaryPassword);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: { passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null },
+      });
+      await tx.session.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await this.audit.record(
+        { actor: actorOf(me), action: 'user.password_reset', entityType: 'User', entityId: id },
+        tx,
+      );
+    });
+    return { temporaryPassword };
   }
 }

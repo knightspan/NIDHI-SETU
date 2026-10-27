@@ -1,8 +1,10 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
+  ChangePasswordSchema,
   LoginSchema,
   TotpCodeSchema,
+  type ChangePasswordInput,
   type LoginInput,
   type LoginResult,
   type Me,
@@ -15,7 +17,7 @@ import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import type { Principal } from '../domain/scope.js';
 import { AuthService, type IssuedSession } from './auth.service.js';
 import { ACCESS_COOKIE, MFA_COOKIE, REFRESH_COOKIE, cookieOptions } from './cookies.js';
-import { AuthenticatedOnly, CurrentUser, Public } from './decorators.js';
+import { AllowDuringPasswordChange, AuthenticatedOnly, CurrentUser, Public } from './decorators.js';
 
 const REFRESH_PATH = '/api/auth';
 
@@ -89,9 +91,29 @@ export class AuthController {
   }
 
   @AuthenticatedOnly()
+  @AllowDuringPasswordChange()
   @Get('me')
   me(@CurrentUser() user: Principal): Promise<Me> {
     return this.auth.me(user);
+  }
+
+  /** Change your own password (also how a temporary password is replaced). */
+  @AuthenticatedOnly()
+  @AllowDuringPasswordChange()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('password')
+  @HttpCode(200)
+  @ApiZodBody(ChangePasswordSchema)
+  async changePassword(
+    @CurrentUser() user: Principal,
+    @Body(new ZodPipe(ChangePasswordSchema)) body: ChangePasswordInput,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ ok: true }> {
+    this.setSession(
+      res,
+      await this.auth.changePassword(user, body.currentPassword, body.newPassword),
+    );
+    return { ok: true };
   }
 
   /** Optional MFA for institution users. */

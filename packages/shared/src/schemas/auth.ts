@@ -39,8 +39,29 @@ export const MeSchema = z.object({
   bankId: z.string().nullable(),
   bankName: z.string().nullable(),
   mfaEnabled: z.boolean(),
+  /** A temporary password was issued: nothing else works until a new one is set. */
+  mustChangePassword: z.boolean(),
   permissions: z.array(z.string()),
   demoMode: z.boolean(),
   today: z.string(),
 });
 export type Me = z.infer<typeof MeSchema>;
+
+/** Password policy: long enough to resist guessing, with at least one letter and one digit. */
+export const NewPasswordSchema = z
+  .string()
+  .min(12, 'Use at least 12 characters')
+  .max(128)
+  .regex(/[A-Za-z]/, 'Include at least one letter')
+  .regex(/\d/, 'Include at least one digit');
+
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(256),
+    newPassword: NewPasswordSchema,
+  })
+  .refine((d) => d.newPassword !== d.currentPassword, {
+    message: 'Choose a password different from the current one',
+    path: ['newPassword'],
+  });
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;

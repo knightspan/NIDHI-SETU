@@ -7,16 +7,17 @@ This document lists the controls and where they live in the code.
 
 ## 1. Authentication
 
-| Control            | Detail                                                                                                                                                   | Where                                   |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Password hashing   | argon2id; a dummy hash is checked for unknown emails so response time doesn't reveal which accounts exist                                                | `apps/api/src/auth/auth.service.ts`     |
-| Lockout            | 5 failed logins lock the account for 15 minutes; failures are audited with the email masked                                                              | `auth.service.ts`                       |
-| MFA                | TOTP (RFC 6238) required for every officer role; secrets stored AES-256-GCM encrypted                                                                    | `auth.service.ts`, `common/crypto.ts`   |
-| Sessions           | Short-lived access JWT (15 min) + refresh token (8 h) in **httpOnly** cookies; refresh tokens are stored hashed and rotated on every use; logout revokes | `auth/cookies.ts`, `auth.controller.ts` |
-| Brute-force limits | 10 login / MFA attempts per minute per client, on top of the lockout                                                                                     | `auth.controller.ts` (`@Throttle`)      |
+| Control            | Detail                                                                                                                                                                                       | Where                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Password hashing   | argon2id; a dummy hash is checked for unknown emails so response time doesn't reveal which accounts exist                                                                                    | `apps/api/src/auth/auth.service.ts`                              |
+| Lockout            | 5 failed logins lock the account for 15 minutes; failures are audited with the email masked                                                                                                  | `auth.service.ts`                                                |
+| MFA                | TOTP (RFC 6238) required for every officer role, and for institutions too whenever `DEMO_MODE=false` (`MFA_REQUIRED_ALL_ROLES`); secrets AES-256-GCM encrypted                               | `auth.service.ts`, `config/config.ts`                            |
+| Sessions           | Short-lived access JWT (15 min) + refresh token (8 h) in **httpOnly** cookies; refresh tokens are stored hashed and rotated on every use; logout revokes                                     | `auth/cookies.ts`, `auth.controller.ts`                          |
+| Brute-force limits | 10 login / MFA attempts per minute per IP **and account** (an office behind one public IP cannot lock itself out), on top of the lockout                                                     | `common/throttler.guard.ts`                                      |
+| Passwords          | ≥ 12 characters with a letter and a digit; users change their own (all sessions revoked); admins issue one-time temporary passwords that must be replaced before any other request is served | `auth.service.ts`, `admin/users.controller.ts`, `auth/guards.ts` |
 
-Institution users are not forced onto MFA in the demo so judges can sign in quickly; production should
-enable it for all roles (one-line change in `auth.service.ts`, see KNOWN_LIMITATIONS).
+In the demo (`DEMO_MODE=true`) institution accounts sign in with a password only, so the walkthrough
+stays short; outside demo mode they need an authenticator like everyone else.
 
 ## 2. Authorisation
 
@@ -40,6 +41,13 @@ enable it for all roles (one-line change in `auth.service.ts`, see KNOWN_LIMITAT
 - **Append-only at the database level.** Triggers reject `UPDATE`, `DELETE` and `TRUNCATE` on
   `audit_events` (migration `audit_append_only`), so even the application's own DB user can't rewrite
   history. `POST /api/audit/verify` recomputes the chain and reports the first broken link.
+- **Signed anchors.** A database superuser could edit an event and recompute every later hash. To catch
+  that, the nightly job signs the chain head with `AUDIT_ANCHOR_KEY` (held outside the database,
+  required in production), stores the anchor in the append-only `audit_anchors` table and sends it to
+  the auditors. Verification checks every anchor; a recomputed chain no longer matches them
+  (`pnpm tamper` demonstrates both attacks).
+- **UTC sessions.** Database connections run with `TimeZone=UTC`, so stored instants are correct
+  whatever the server's zone (raw SQL, reports and backups see the true time).
 - **Field provenance.** Values are never overwritten: each is an assertion with its source and trust
   level (declared → OCR → officer-verified → bank-confirmed), so a later edit can't silently replace
   what the bank confirmed.

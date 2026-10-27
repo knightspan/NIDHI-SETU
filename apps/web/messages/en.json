@@ -569,7 +569,11 @@
     "resetMfa": "Reset MFA",
     "created": "User created",
     "updated": "User updated",
-    "mfaReset": "MFA reset — the user enrols again at next sign-in"
+    "mfaReset": "MFA reset — the user enrols again at next sign-in",
+    "resetPassword": "Reset password",
+    "resetPasswordConfirm": "Issue a temporary password for {email}? Their current sessions end now.",
+    "temporaryTitle": "Temporary password",
+    "temporaryBody": "Give this to {email} through a trusted channel. It is shown only once; they must change it at their next sign-in."
   },
   "releases": {
     "title": "Releases",
@@ -806,5 +810,24 @@
     "rejectHint": "Use this for files that are not FDRs, are unreadable, or duplicate another scan.",
     "rejectReason": "Reason",
     "rejectedToast": "Scan rejected"
+  },
+  "account": {
+    "title": "My account",
+    "profile": "Profile",
+    "name": "Name",
+    "role": "Role",
+    "mfa": "Authenticator (MFA)",
+    "mfaOn": "On",
+    "mfaOff": "Off",
+    "changeTitle": "Change password",
+    "policy": "At least 12 characters, with a letter and a digit. All your other sessions will be signed out.",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "save": "Change password",
+    "mismatch": "The two new passwords do not match",
+    "changed": "Password changed",
+    "mustChangeTitle": "Choose a new password",
+    "mustChangeBody": "An administrator issued you a temporary password. Choose your own password to continue."
   }
 }

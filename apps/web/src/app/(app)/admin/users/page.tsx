@@ -6,6 +6,7 @@ import { ShieldCheck, ShieldOff, UserPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
 import { Field, Input, Select } from '@/components/ui/form';
@@ -36,6 +37,20 @@ export default function UsersPage() {
     queryFn: () => api<UserRow[]>('/api/admin/users'),
   });
   const [creating, setCreating] = useState(false);
+  const [temporary, setTemporary] = useState<{ email: string; password: string } | null>(null);
+  const [resetting, setResetting] = useState<UserRow | null>(null);
+  const resetPassword = useMutation({
+    mutationFn: (u: UserRow) =>
+      api<{ temporaryPassword: string }>(`/api/admin/users/${u.id}/reset-password`, {
+        method: 'POST',
+        body: {},
+      }).then((r) => ({ email: u.email, password: r.temporaryPassword })),
+    onSuccess: (r) => {
+      setResetting(null);
+      setTemporary(r);
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const act = useMutation({
     mutationFn: ({
       path,
@@ -120,6 +135,9 @@ export default function UsersPage() {
                     >
                       {u.active ? t('users.deactivate') : t('users.activate')}
                     </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setResetting(u)}>
+                      {t('users.resetPassword')}
+                    </Button>
                     {u.mfaEnabled && (
                       <Button
                         size="sm"
@@ -143,6 +161,27 @@ export default function UsersPage() {
         </CardBody>
       </Card>
       <CreateDialog open={creating} onClose={() => setCreating(false)} />
+      <ConfirmDialog
+        open={resetting !== null}
+        onClose={() => setResetting(null)}
+        title={t('users.resetPassword')}
+        description={resetting ? t('users.resetPasswordConfirm', { email: resetting.email }) : ''}
+        confirmLabel={t('users.resetPassword')}
+        variant="danger"
+        loading={resetPassword.isPending}
+        onConfirm={() => resetting && resetPassword.mutate(resetting)}
+      />
+      <Dialog
+        open={temporary !== null}
+        onClose={() => setTemporary(null)}
+        title={t('users.temporaryTitle')}
+        description={temporary ? t('users.temporaryBody', { email: temporary.email }) : ''}
+        footer={<Button onClick={() => setTemporary(null)}>{t('common.close')}</Button>}
+      >
+        <p className="rounded-md bg-slate-100 p-3 text-center font-mono text-lg tracking-wide break-all text-slate-900">
+          {temporary?.password}
+        </p>
+      </Dialog>
     </>
   );
 }

@@ -5,6 +5,7 @@ import { MFA_MANDATORY_ROLES, permissionsFor, type LoginResult, type Me } from '
 import argon2 from 'argon2';
 import { randomToken, sha256Hex } from '../common/crypto.js';
 import { RequestContext } from '../common/request-context.js';
+import { InvalidInputError } from '../domain/errors.js';
 import { AuditService } from '../audit/audit.service.js';
 import { ClockService } from '../clock/clock.service.js';
 import { APP_CONFIG, mfaRequiredFor, type AppConfig } from '../config/config.js';
@@ -205,6 +206,48 @@ export class AuthService {
     return this.issueSession(session.user, false);
   }
 
+  /**
+   * The signed-in user replaces their password. Every session (on every device) is revoked and a
+   * fresh one is issued for this browser.
+   */
+  async changePassword(
+    principal: Principal,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<IssuedSession> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: principal.id } });
+    if (!(await argon2.verify(user.passwordHash, currentPassword))) {
+      throw new InvalidInputError('The current password is not correct');
+    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await hashPassword(newPassword),
+          mustChangePassword: false,
+          passwordChangedAt: new Date(),
+          failedLogins: 0,
+          lockedUntil: null,
+        },
+      });
+      await tx.session.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await this.audit.record(
+        {
+          actor: { id: user.id, role: user.role },
+          action: 'auth.password_changed',
+          entityType: 'User',
+          entityId: user.id,
+        },
+        tx,
+      );
+      return u;
+    });
+    return this.issueSession(updated, false);
+  }
+
   async logout(refreshToken: string | undefined, principal?: Principal): Promise<void> {
     if (refreshToken) {
       await this.prisma.session.updateMany({
@@ -239,6 +282,7 @@ export class AuthService {
       bankId: user.bankId,
       bankName: user.bank?.name ?? null,
       mfaEnabled: user.mfaEnabled,
+      mustChangePassword: user.mustChangePassword,
       permissions: permissionsFor(user.role),
       demoMode: this.clock.demoMode,
       today: this.clock.todayIso(),

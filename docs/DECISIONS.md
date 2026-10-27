@@ -174,3 +174,24 @@ decision, and the audit log is append-only by design, so the system never delete
 dynamically. **Decision:** Production CSP allows inline scripts but restricts every source to the
 portal's own origin (no third-party scripts, `frame-ancestors 'none'`, `object-src 'none'`). Moving to
 nonces is listed in KNOWN_LIMITATIONS.
+
+### D-026 · Signed audit anchors (2026-10-27)
+
+**Context:** A hash chain alone only proves internal consistency; anyone able to rewrite the table can
+recompute it. **Decision:** Sign the chain head daily with an HMAC key kept outside the database
+(`AUDIT_ANCHOR_KEY`), store anchors append-only and email them to auditors. **Consequence:** edits to
+anything older than the last anchor are detectable even after a full rewrite; events since the last
+anchor are protected by the chain and triggers only. Anchoring hourly, or to an external timestamping
+service, is on the roadmap.
+
+### D-027 · Database sessions in UTC (2026-10-27)
+
+**Context:** Prisma's pg driver adapter exchanges timestamps without a zone; on a server whose time zone
+is not UTC every stored instant was shifted by the offset (consistent through Prisma, wrong for raw SQL).
+**Decision:** All Prisma connections set `TimeZone=UTC`.
+
+### D-028 · Temporary passwords block everything but the password change (2026-10-27)
+
+**Decision:** An admin reset issues a random one-time password shown once (never stored or logged in
+clear), revokes sessions and sets `mustChangePassword`; the permission guard refuses every route except
+the profile and password change until the user picks their own password.

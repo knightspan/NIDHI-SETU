@@ -36,7 +36,14 @@ execSync('pnpm exec prisma migrate deploy', {
 // Config is read on first use, so these imports come after DATABASE_URL points at the load DB.
 const { AppModule } = await import('../app.module.js');
 const { LifecycleService } = await import('../jobs/lifecycle.service.js');
+const { DashboardService } = await import('../oversight/dashboard.service.js');
+const { InstitutionsService } = await import('../oversight/institutions.service.js');
+const { MetricsService } = await import('../oversight/metrics.service.js');
+const { ReportsService } = await import('../oversight/reports.service.js');
+const { InstrumentsService } = await import('../instruments/instruments.service.js');
+const { InstrumentListQuerySchema, ReportQuerySchema } = await import('@nidhisetu/shared');
 const { scriptPrisma } = await import('./db.js');
+const { PrismaService: PrismaServiceRef } = await import('../prisma/prisma.service.js');
 const { seedAll } = await import('./seed.js');
 
 const prisma = scriptPrisma();
@@ -93,6 +100,57 @@ try {
     process.exitCode = 1;
   } else {
     console.log(`PASS: within the ${BUDGET_S}s budget`);
+  }
+
+  // 4. What people open every day, as the national (bureau) officer who sees everything.
+  const READ_BUDGET_MS = Number(process.env.LOAD_READ_BUDGET_MS ?? 2_000);
+  const u = await app
+    .get(PrismaServiceRef)
+    .user.findFirstOrThrow({ where: { role: 'BUREAU_OFFICER' } });
+  const bureau = { id: u.id, role: u.role, regionId: null, institutionId: null, bankId: null };
+  const reads: [string, () => Promise<unknown>][] = [
+    ['dashboard', () => app.get(DashboardService).build(bureau)],
+    [
+      'instrument list (page 1)',
+      () => app.get(InstrumentsService).list(bureau, InstrumentListQuerySchema.parse({})),
+    ],
+    [
+      'instrument list (expiring soon)',
+      () =>
+        app
+          .get(InstrumentsService)
+          .list(bureau, InstrumentListQuerySchema.parse({ validity: 'EXPIRING_SOON' })),
+    ],
+    [
+      'instrument search',
+      () =>
+        app.get(InstrumentsService).list(bureau, InstrumentListQuerySchema.parse({ q: 'LOAD/77' })),
+    ],
+    [
+      'institution list',
+      () => app.get(InstitutionsService).list(bureau, { page: 1, pageSize: 25 }),
+    ],
+    ['global search', () => app.get(InstitutionsService).search(bureau, 'LOAD-0042')],
+    ['outcome metrics', () => app.get(MetricsService).all()],
+    [
+      'report: upcoming maturities (xlsx)',
+      () =>
+        app
+          .get(ReportsService)
+          .export(
+            bureau,
+            'upcoming-maturities',
+            ReportQuerySchema.parse({ format: 'xlsx', days: 365 }),
+          ),
+    ],
+  ];
+  for (const [name, run] of reads) {
+    const t = Date.now();
+    await run();
+    const ms = Date.now() - t;
+    const ok = ms <= READ_BUDGET_MS;
+    if (!ok) process.exitCode = 1;
+    console.log(`${ok ? 'PASS' : 'FAIL'} ${name}: ${ms} ms`);
   }
 } finally {
   await app.close();

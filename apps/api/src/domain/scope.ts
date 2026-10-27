@@ -7,6 +7,8 @@ export interface Principal {
   regionId: string | null;
   institutionId: string | null;
   bankId: string | null;
+  /** A temporary password is in use: only the change-password flow is allowed. */
+  mustChangePassword?: boolean;
 }
 
 /** Thrown when a principal's account is missing the attribute its scope needs. */

@@ -30,6 +30,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
+  // A temporary password must be replaced before anything else (the API enforces this too).
+  useEffect(() => {
+    if (me?.mustChangePassword && pathname !== '/account') router.replace('/account');
+  }, [me?.mustChangePassword, pathname, router]);
+
   if (isLoading || !me) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -145,7 +150,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1 md:flex-none md:w-56 lg:w-64">
-            <p className="truncate text-sm font-semibold text-slate-900">{me.name}</p>
+            <Link
+              href="/account"
+              className="block truncate text-sm font-semibold text-slate-900 hover:underline"
+            >
+              {me.name}
+            </Link>
             <p className="truncate text-xs text-slate-600">
               {t(`roles.${me.role}`)}
               {me.institutionName && ` · ${me.institutionName}`}

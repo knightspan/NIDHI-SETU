@@ -46,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         institutionId: true,
         bankId: true,
         active: true,
+        mustChangePassword: true,
       },
     });
     if (!user?.active) throw new UnauthorizedException();
@@ -55,6 +56,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       regionId: user.regionId,
       institutionId: user.institutionId,
       bankId: user.bankId,
+      mustChangePassword: user.mustChangePassword,
     };
   }
 }

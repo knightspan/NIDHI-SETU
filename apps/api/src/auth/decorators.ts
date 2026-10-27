@@ -6,6 +6,7 @@ import type { Principal } from '../domain/scope.js';
 export const IS_PUBLIC = 'ns:isPublic';
 export const PERMISSIONS_KEY = 'ns:permissions';
 export const AUTHENTICATED_ONLY = 'ns:authenticatedOnly';
+export const ALLOW_PASSWORD_CHANGE = 'ns:allowDuringPasswordChange';
 
 /** No authentication needed. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
@@ -16,6 +17,9 @@ export const RequirePermission = (...permissions: Permission[]) =>
 
 /** Any authenticated user (e.g. own profile, own notifications). */
 export const AuthenticatedOnly = () => SetMetadata(AUTHENTICATED_ONLY, true);
+
+/** Still reachable while the user must replace a temporary password (profile, change password). */
+export const AllowDuringPasswordChange = () => SetMetadata(ALLOW_PASSWORD_CHANGE, true);
 
 export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
   const req = ctx.switchToHttp().getRequest<Request & { user?: Principal }>();

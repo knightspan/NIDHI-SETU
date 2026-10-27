@@ -10,7 +10,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { hasPermission, type Permission } from '@nidhisetu/shared';
 import type { Request } from 'express';
 import type { Principal } from '../domain/scope.js';
-import { AUTHENTICATED_ONLY, IS_PUBLIC, PERMISSIONS_KEY } from './decorators.js';
+import {
+  ALLOW_PASSWORD_CHANGE,
+  AUTHENTICATED_ONLY,
+  IS_PUBLIC,
+  PERMISSIONS_KEY,
+} from './decorators.js';
 
 /** Global: every route needs a valid access token unless marked @Public(). */
 @Injectable()
@@ -45,6 +50,17 @@ export class PermissionsGuard implements CanActivate {
 
     const user = context.switchToHttp().getRequest<Request & { user?: Principal }>().user;
     if (!user) throw new ForbiddenException();
+
+    if (
+      user.mustChangePassword &&
+      !this.reflector.getAllAndOverride<boolean>(ALLOW_PASSWORD_CHANGE, targets)
+    ) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'PasswordChangeRequired',
+        message: 'Choose a new password to continue.',
+      });
+    }
 
     if (this.reflector.getAllAndOverride<boolean>(AUTHENTICATED_ONLY, targets)) return true;
 

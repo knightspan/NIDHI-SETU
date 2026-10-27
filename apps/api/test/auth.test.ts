@@ -107,4 +107,63 @@ describe('authentication and MFA', () => {
     await prisma.user.update({ where: { id: user.id }, data: { active: false } });
     await c.get('/api/auth/me').expect(401);
   });
+
+  it('lets a user change their own password; wrong or weak passwords are refused', async () => {
+    const user = fx.users.INSTITUTION_USER;
+    const c = await Client.login(app, user);
+    await c
+      .post('/api/auth/password', { currentPassword: 'nope', newPassword: 'Another-Pass-2026' })
+      .expect(400);
+    await c
+      .post('/api/auth/password', { currentPassword: TEST_PASSWORD, newPassword: 'short1' })
+      .expect(400);
+    await c
+      .post('/api/auth/password', {
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'Another-Pass-2026',
+      })
+      .expect(200);
+    await c.get('/api/auth/me').expect(200); // the new session keeps this browser signed in
+    const anon = await Client.anonymous(app);
+    await anon.post('/api/auth/login', { email: user.email, password: TEST_PASSWORD }).expect(401);
+    // Restore for other tests.
+    await c
+      .post('/api/auth/password', {
+        currentPassword: 'Another-Pass-2026',
+        newPassword: TEST_PASSWORD,
+      })
+      .expect(200);
+  });
+
+  it('admin reset issues a temporary password that must be replaced before anything else', async () => {
+    const admin = await Client.login(app, fx.users.SYS_ADMIN);
+    const target = fx.others.institutionUser;
+    const { temporaryPassword } = (
+      await admin.post(`/api/admin/users/${target.id}/reset-password`).expect(200)
+    ).body as { temporaryPassword: string };
+    expect(temporaryPassword.length).toBeGreaterThanOrEqual(12);
+    const audit = await prisma.auditEvent.findFirst({
+      where: { action: 'user.password_reset', entityId: target.id },
+    });
+    expect(JSON.stringify(audit?.data ?? {})).not.toContain(temporaryPassword);
+
+    const c = await Client.anonymous(app);
+    await c
+      .post('/api/auth/login', { email: target.email, password: temporaryPassword })
+      .expect(200);
+    const me = (await c.get('/api/auth/me').expect(200)).body as { mustChangePassword: boolean };
+    expect(me.mustChangePassword).toBe(true);
+    const blocked = await c.get('/api/instruments');
+    expect(blocked.status).toBe(403);
+    expect((blocked.body as { error: string }).error).toBe('PasswordChangeRequired');
+
+    await c
+      .post('/api/auth/password', {
+        currentPassword: temporaryPassword,
+        newPassword: TEST_PASSWORD,
+      })
+      .expect(200);
+    await c.get('/api/instruments').expect(200);
+    await admin.post(`/api/admin/users/${fx.users.SYS_ADMIN.id}/reset-password`).expect(400);
+  });
 });
