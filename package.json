@@ -18,12 +18,14 @@
     "stack:up": "node scripts/local-stack.mjs up",
     "stack:down": "node scripts/local-stack.mjs down",
     "stack:status": "node scripts/local-stack.mjs status",
-    "seed": "pnpm --filter @nidhisetu/api seed",
-    "demo:reset": "pnpm --filter @nidhisetu/api demo:reset",
+    "seed": "node scripts/in-stack.mjs seed",
+    "demo:reset": "node scripts/in-stack.mjs demo:reset",
     "demo:otp": "pnpm --filter @nidhisetu/api demo:otp",
     "seed:docker": "docker compose exec api node dist/scripts/cli-seed.js",
     "demo:reset:docker": "docker compose exec api node dist/scripts/cli-demo-reset.js",
-    "e2e": "pnpm --filter @nidhisetu/web e2e"
+    "e2e": "pnpm --filter @nidhisetu/web e2e",
+    "load-test": "pnpm --filter @nidhisetu/api load-test",
+    "tamper": "node scripts/in-stack.mjs tamper"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

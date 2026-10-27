@@ -48,7 +48,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Domain coverage gate (≥ 80 %)
+        run: pnpm --filter @nidhisetu/api test:coverage
       - run: pnpm build
+      - name: Load test — lifecycle job over 10 000 deposits in < 60 s
+        run: cp .env.example .env && pnpm load-test
 
   ocr:
     name: Lint · test (OCR service)
