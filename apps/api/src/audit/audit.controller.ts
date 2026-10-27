@@ -76,4 +76,23 @@ export class AuditController {
     });
     return result;
   }
+
+  /** Signs the current head of the chain now (also done by the nightly job). */
+  @RequirePermission('audit:verify')
+  @Post('anchor')
+  @HttpCode(200)
+  async anchor(@CurrentUser() user: Principal, @Body() _body: unknown) {
+    const a = await this.audit.anchor();
+    if (a) {
+      await this.audit.record({
+        actor: actorOf(user),
+        action: 'audit.anchored',
+        entityType: 'AuditChain',
+        data: { id: a.id, seq: a.seq.toString(), hash: a.hash },
+      });
+    }
+    return a
+      ? { id: a.id, seq: a.seq.toString(), hash: a.hash }
+      : { id: null, note: 'Head already anchored' };
+  }
 }

@@ -78,6 +78,40 @@ describe('tamper-evident audit log', () => {
     expect((await audit.verify()).ok).toBe(true);
   });
 
+  it('signs the chain head and catches a fully recomputed chain through the anchor', async () => {
+    const auditor = await Client.login(app, fx.users.AUDITOR);
+    const a = (await auditor.post('/api/audit/anchor').expect(200)).body as {
+      id: number;
+      seq: string;
+    };
+    expect(a.id).toBeGreaterThan(0);
+    const ok = (await auditor.post('/api/audit/verify').expect(200)).body as {
+      ok: boolean;
+      anchorsChecked: number;
+    };
+    expect(ok).toMatchObject({ ok: true });
+    expect(ok.anchorsChecked).toBeGreaterThan(0);
+
+    // An insider edits the anchored event and recomputes its hash so the row looks consistent.
+    const sentinel = new Error('rollback');
+    let report: Awaited<ReturnType<AuditService['verify']>> | undefined;
+    await prisma
+      .$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(
+          'ALTER TABLE audit_events DISABLE TRIGGER audit_events_no_update',
+        );
+        await tx.$executeRawUnsafe(
+          `UPDATE audit_events SET hash = repeat('0', 64) WHERE seq = ${BigInt(a.seq).toString()}`,
+        );
+        report = await audit.verify(tx);
+        throw sentinel;
+      })
+      .catch((e: unknown) => {
+        if (e !== sentinel) throw e;
+      });
+    expect(report?.breaks.some((b) => b.kind === 'ANCHOR_MISMATCH' && b.seq === a.seq)).toBe(true);
+  });
+
   it('lets auditors browse and verify; refuses others', async () => {
     const auditor = await Client.login(app, fx.users.AUDITOR);
     const list = await auditor.get('/api/audit/events?action=auth.&pageSize=5').expect(200);

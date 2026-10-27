@@ -69,7 +69,9 @@ export interface StoredAuditEvent extends HashableAuditEvent {
 export type ChainBreak =
   | { seq: string; kind: 'PREV_HASH_MISMATCH'; expected: string; found: string }
   | { seq: string; kind: 'HASH_MISMATCH'; expected: string; found: string }
-  | { seq: string; kind: 'SEQUENCE_GAP'; expected: string; found: string };
+  | { seq: string; kind: 'SEQUENCE_GAP'; expected: string; found: string }
+  | { seq: string; kind: 'ANCHOR_MISMATCH'; expected: string; found: string }
+  | { seq: string; kind: 'ANCHOR_FORGED'; expected: string; found: string };
 
 export interface ChainVerification {
   ok: boolean;

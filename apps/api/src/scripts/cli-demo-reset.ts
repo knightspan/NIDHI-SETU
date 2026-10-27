@@ -36,7 +36,7 @@ const applied = await client
   .catch(() => -1);
 
 if (applied === migrationsOnDisk) {
-  // Schema is current: empty every table (fast). The audit table's append-only triggers are
+  // Schema is current: empty every table (fast). The audit tables' append-only triggers are
   // switched off for this one statement only, inside the transaction.
   const tables = await client.query<{ tablename: string }>(
     "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'",
@@ -44,8 +44,10 @@ if (applied === migrationsOnDisk) {
   const list = tables.rows.map((t) => `"${t.tablename.replace(/"/g, '""')}"`).join(', ');
   await client.query('BEGIN');
   await client.query('ALTER TABLE audit_events DISABLE TRIGGER USER');
+  await client.query('ALTER TABLE audit_anchors DISABLE TRIGGER USER');
   await client.query(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
   await client.query('ALTER TABLE audit_events ENABLE TRIGGER USER');
+  await client.query('ALTER TABLE audit_anchors ENABLE TRIGGER USER');
   await client.query('COMMIT');
   await client.end();
 } else {

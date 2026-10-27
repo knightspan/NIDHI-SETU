@@ -43,16 +43,6 @@ export class DiscrepancyEngine {
     private readonly notifications: NotificationsService,
   ) {}
 
-  private banksCache: { at: number; codes: { code: string }[] } | null = null;
-
-  /** The bank master changes rarely; a few seconds of caching saves a query per evaluation. */
-  private async bankCodes(tx: Prisma.TransactionClient): Promise<{ code: string }[]> {
-    if (this.banksCache && Date.now() - this.banksCache.at < 5_000) return this.banksCache.codes;
-    const codes = await tx.bank.findMany({ select: { code: true } });
-    this.banksCache = { at: Date.now(), codes };
-    return codes;
-  }
-
   async findings(tx: Prisma.TransactionClient, instrumentId: string): Promise<Finding[] | null> {
     const inst = await tx.instrument.findUniqueOrThrow({
       where: { id: instrumentId },
@@ -79,19 +69,17 @@ export class DiscrepancyEngine {
       _sum: { amount: true },
     });
 
-    const duplicateFdrs =
-      inst.bankCode && inst.fdrNumber
-        ? await tx.instrument.findMany({
-            where: {
-              bankCode: inst.bankCode,
-              fdrNumber: inst.fdrNumber,
-              id: { not: inst.id },
-              institutionId: { not: inst.institutionId },
-              status: { not: 'DRAFT' },
-            },
-            select: { refNo: true, institution: { select: { name: true } } },
-          })
-        : [];
+    const duplicateFdrs = inst.fdrKey
+      ? await tx.instrument.findMany({
+          where: {
+            fdrKey: inst.fdrKey,
+            id: { not: inst.id },
+            institutionId: { not: inst.institutionId },
+            status: { not: 'DRAFT' },
+          },
+          select: { refNo: true, institution: { select: { name: true } } },
+        })
+      : [];
 
     const hashes = inst.documents.map((d) => d.sha256);
     const dupDocs = hashes.length
@@ -105,7 +93,7 @@ export class DiscrepancyEngine {
         })
       : [];
 
-    const banks = await this.bankCodes(tx);
+    const banks = await tx.bank.findMany({ select: { code: true } });
 
     return evaluateDiscrepancyRules({
       states: computeFieldStates(inst.assertions),
@@ -245,8 +233,7 @@ export class DiscrepancyEngine {
       const inst = await tx.instrument.findUniqueOrThrow({ where: { id: instrumentId } });
       const twins = await tx.instrument.findMany({
         where: {
-          bankCode: inst.bankCode,
-          fdrNumber: inst.fdrNumber,
+          fdrKey: inst.fdrKey,
           id: { not: instrumentId },
           status: { not: 'DRAFT' },
         },

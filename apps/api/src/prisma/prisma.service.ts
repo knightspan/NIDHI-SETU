@@ -11,6 +11,15 @@ type TxOptions = {
   isolationLevel?: Prisma.TransactionIsolationLevel;
 };
 
+/**
+ * Connection settings for Prisma's pg adapter. The adapter exchanges timestamps without a zone, so
+ * the session must be UTC; otherwise a server in another time zone (e.g. Asia/Kolkata) stores every
+ * instant shifted by its offset, which raw SQL, reports and backups would then see.
+ */
+export function pgAdapter(connectionString: string): PrismaPg {
+  return new PrismaPg({ connectionString, options: '-c TimeZone=UTC' });
+}
+
 /** Work to run at the end of an interactive transaction, just before it commits. */
 const preCommit = new WeakMap<object, Hook[]>();
 
@@ -32,7 +41,7 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
 
   constructor(@Inject(APP_CONFIG) config: AppConfig) {
     super({
-      adapter: new PrismaPg({ connectionString: config.DATABASE_URL }),
+      adapter: pgAdapter(config.DATABASE_URL),
       ...(process.env.PRISMA_QUERY_STATS
         ? { log: [{ emit: 'event' as const, level: 'query' as const }] }
         : {}),

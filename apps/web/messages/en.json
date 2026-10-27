@@ -724,7 +724,8 @@
     "colEntity": "Entity",
     "colHash": "Hash",
     "details": "Details",
-    "empty": "No events match."
+    "empty": "No events match.",
+    "anchors": "{count, plural, =0 {No signed anchors yet} one {# signed anchor matches} other {All # signed anchors match}}"
   },
   "ocr": {
     "title": "Upload scan to pre-fill",

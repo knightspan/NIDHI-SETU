@@ -222,6 +222,8 @@ model Instrument {
   branch               String?
   ifsc                 String?
   fdrNumber            String?
+  /// Canonical bank + FDR number for duplicate detection (see src/domain/fdr-key.ts).
+  fdrKey               String?
   amount               Decimal?        @db.Decimal(14, 2)
   issueDate            DateTime?       @db.Date
   maturityDate         DateTime?       @db.Date
@@ -259,6 +261,7 @@ model Instrument {
   @@index([validityStatus])
   @@index([maturityDate])
   @@index([bankCode, fdrNumber])
+  @@index([fdrKey])
 }
 
 model StatusTransition {
@@ -568,4 +571,15 @@ model AuditEvent {
 model Counter {
   name  String @id
   value Int
+}
+
+/// Signed checkpoints of the audit chain head (see src/domain/audit-anchor.ts). Append-only.
+model AuditAnchor {
+  id        Int      @id @default(autoincrement())
+  seq       BigInt
+  hash      String
+  signature String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("audit_anchors")
 }

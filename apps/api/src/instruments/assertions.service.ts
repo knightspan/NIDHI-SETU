@@ -14,6 +14,7 @@ import {
   trustScore,
   type FieldState,
 } from '../domain/trust.js';
+import { fdrKey } from '../domain/fdr-key.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 export interface AssertionInput {
@@ -85,6 +86,7 @@ export class AssertionsService {
       where: { id: instrumentId },
       data: {
         fdrNumber: v('fdrNumber'),
+        fdrKey: fdrKey(bankCode, v('fdrNumber')),
         bankCode,
         bankId: bank?.id ?? null,
         ifsc: v('ifsc'),

@@ -7,7 +7,7 @@ import { randomToken, sha256Hex } from '../common/crypto.js';
 import { RequestContext } from '../common/request-context.js';
 import { AuditService } from '../audit/audit.service.js';
 import { ClockService } from '../clock/clock.service.js';
-import { APP_CONFIG, type AppConfig } from '../config/config.js';
+import { APP_CONFIG, mfaRequiredFor, type AppConfig } from '../config/config.js';
 import type { Principal } from '../domain/scope.js';
 import type { User } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -91,7 +91,8 @@ export class AuthService {
       throw await fail(failed >= MAX_FAILED_LOGINS ? 'bad_password_locked' : 'bad_password');
     }
 
-    const mfaRequired = MFA_MANDATORY_ROLES.includes(user.role) || user.mfaEnabled;
+    const mfaRequired =
+      mfaRequiredFor(user.role, this.config, MFA_MANDATORY_ROLES) || user.mfaEnabled;
     if (!mfaRequired) return { result: { status: 'OK' }, session: await this.issueSession(user) };
 
     if (user.mfaEnabled && user.mfaSecretEnc) {

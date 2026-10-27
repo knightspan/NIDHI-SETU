@@ -31,6 +31,8 @@ export interface LifecycleSummary {
   escalationsCreated: number;
   escalationsResolved: number;
   escalationNotifications: number;
+  /** Signed checkpoint of the audit chain taken at the end of the run. */
+  auditAnchor?: { id: number; seq: string; hash: string } | null;
   durationMs: number;
   finishedAt: string;
 }
@@ -213,6 +215,29 @@ export class LifecycleService {
       entityId: null,
       data: { ...summary },
     });
+    // Daily checkpoint: sign the chain head and send a copy to the auditors (kept off the database).
+    const anchor = await this.audit.anchor();
+    if (anchor) {
+      summary.auditAnchor = { id: anchor.id, seq: anchor.seq.toString(), hash: anchor.hash };
+      const auditors = await this.prisma.user.findMany({
+        where: { role: 'AUDITOR', active: true },
+        select: { id: true },
+      });
+      await this.notifications.notifyUsers(
+        this.prisma,
+        auditors.map((u) => u.id),
+        {
+          kind: 'SYSTEM',
+          title: `Audit anchor #${anchor.id}`,
+          body: `Audit chain checkpoint #${anchor.id}: event ${anchor.seq}, hash ${anchor.hash}. Keep this message: it lets you prove later that the trail was not rewritten.`,
+          link: '/audit',
+        },
+      );
+      await this.prisma.systemSetting.update({
+        where: { key: LAST_RUN_KEY },
+        data: { value: { ...summary } },
+      });
+    }
     this.logger.log(
       `lifecycle (${trigger}) ${summary.today}: ${held.length} held, ${validityChanged} validity changes, ` +
         `${remindersCreated} reminders, ${esc.created} escalations in ${summary.durationMs} ms`,

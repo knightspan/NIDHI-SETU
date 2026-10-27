@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Actor } from '../common/actor.js';
 import { RequestContext } from '../common/request-context.js';
 import { ClockService } from '../clock/clock.service.js';
+import { APP_CONFIG, auditAnchorKey, type AppConfig } from '../config/config.js';
+import { checkAnchors, signAnchor } from '../domain/audit-anchor.js';
 import {
   GENESIS_HASH,
   canonicalJson,
@@ -28,6 +30,8 @@ export interface AuditInput {
 export interface AuditVerifyResult {
   ok: boolean;
   checked: number;
+  /** Signed anchors checked against the chain (detects a fully recomputed chain). */
+  anchorsChecked: number;
   breaks: ChainBreak[];
   verifiedAt: string;
   headHash: string;
@@ -38,6 +42,7 @@ export class AuditService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clock: ClockService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   /**
@@ -129,12 +134,55 @@ export class AuditService {
       nextSeq = page[page.length - 1]!.seq + 1n;
       if (breaks.length > 100) break;
     }
+    // Anchors: the chain must still contain every signed checkpoint.
+    const anchors = await db.auditAnchor.findMany({ orderBy: { id: 'asc' } });
+    const anchored = await db.auditEvent.findMany({
+      where: { seq: { in: anchors.map((a) => a.seq) } },
+      select: { seq: true, hash: true },
+    });
+    // Anchor breaks first: they matter most and must survive the cap below.
+    breaks.unshift(
+      ...checkAnchors(
+        anchors,
+        new Map(anchored.map((e) => [e.seq, e.hash])),
+        auditAnchorKey(this.config),
+      ),
+    );
     return {
       ok: breaks.length === 0,
       checked,
+      anchorsChecked: anchors.length,
       breaks: breaks.slice(0, 100),
       verifiedAt: new Date().toISOString(),
       headHash: prev,
     };
+  }
+
+  /**
+   * Signs the current head of the chain (run daily by the lifecycle job, or on demand). Returns the
+   * new anchor, or null when the head is already anchored or the chain is empty.
+   */
+  async anchor(): Promise<{ id: number; seq: bigint; hash: string } | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 AS ok FROM (SELECT pg_advisory_xact_lock(${AUDIT_LOCK_KEY}::bigint)) AS l`;
+      const head = await tx.auditEvent.findFirst({
+        orderBy: { seq: 'desc' },
+        select: { seq: true, hash: true },
+      });
+      if (!head) return null;
+      const last = await tx.auditAnchor.findFirst({ orderBy: { id: 'desc' } });
+      if (last && last.seq === head.seq) return null;
+      const id = (last?.id ?? 0) + 1;
+      const created = await tx.auditAnchor.create({
+        data: {
+          id,
+          seq: head.seq,
+          hash: head.hash,
+          signature: signAnchor(auditAnchorKey(this.config), id, head.seq, head.hash),
+          createdAt: this.clock.now(),
+        },
+      });
+      return { id: created.id, seq: created.seq, hash: created.hash };
+    });
   }
 }

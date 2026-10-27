@@ -98,6 +98,19 @@ describe('scrutiny and discrepancy detection', () => {
     expect(dupB?.severity).toBe('HIGH');
   });
 
+  it('catches a duplicate FDR written with look-alike characters and other separators', async () => {
+    const decl = declaration(bankCode, { fdrNumber: `SBI/FD/2026/${Date.now() % 1_000_000}0` });
+    const a = await submitted(decl);
+    const disguised = decl.fdrNumber.replace(/\//g, '-').replace(/0/g, 'O').replace(/1/g, 'I');
+    const other = await Client.login(app, fx.others.institutionUser);
+    const { id: b } = (
+      await other.post('/api/instruments', { ...decl, fdrNumber: disguised }).expect(201)
+    ).body as { id: string };
+    await other.post(`/api/instruments/${b}/submit`).expect(200);
+    expect(codes(await detail(other, b))).toContain('DUPLICATE_FDR');
+    expect(codes(await detail(inst, a))).toContain('DUPLICATE_FDR');
+  });
+
   it('flags the same document reused on another instrument', async () => {
     const pdf = uniquePdf('shared-scan');
     const ids: string[] = [];

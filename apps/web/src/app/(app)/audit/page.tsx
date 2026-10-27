@@ -30,6 +30,7 @@ interface AuditRow {
 interface VerifyResult {
   ok: boolean;
   checked: number;
+  anchorsChecked: number;
   headHash: string;
   breaks: { seq: string; kind: string; expected: string; found: string }[];
 }
@@ -96,6 +97,7 @@ function Inner() {
       {verify.data &&
         (verify.data.ok ? (
           <Alert tone="success" title={t('ok', { count: verify.data.checked })}>
+            <span className="block">{t('anchors', { count: verify.data.anchorsChecked })}</span>
             <span className="font-mono text-xs break-all">
               {t('head')}: {verify.data.headHash}
             </span>
