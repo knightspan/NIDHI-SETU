@@ -1,0 +1,3 @@
+# Optional: the full PaddleOCR stack (large). Used automatically when installed.
+paddlepaddle==3.3.1
+paddleocr==3.7.0

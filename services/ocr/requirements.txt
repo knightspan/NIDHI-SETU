@@ -1,6 +1,12 @@
 # Runtime dependencies of the OCR service.
-# OCR engines (PaddleOCR / Tesseract) are added in Phase 9 — see docs/PLAN.md.
 fastapi==0.162.0
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32
 pydantic==2.14.1
+pillow==13.0.0
+pypdfium2==5.14.0
+# PaddleOCR's PP-OCR models on ONNX runtime (models bundled in the wheel → works offline).
+rapidocr==3.10.0
+onnxruntime==1.31.1
+# Fallback engine when the tesseract binary is installed.
+pytesseract==0.3.13

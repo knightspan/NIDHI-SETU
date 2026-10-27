@@ -5,6 +5,9 @@ import path from 'node:path';
 import { DiscrepancyEngine } from '../discrepancies/discrepancy-engine.service.js';
 import { DocumentsController } from '../documents/documents.controller.js';
 import { DocumentsService } from '../documents/documents.service.js';
+import { OcrController } from '../ocr/ocr.controller.js';
+import { OcrClient } from '../ocr/ocr.client.js';
+import { OcrIngestService } from '../ocr/ocr-ingest.service.js';
 import { FsStorageAdapter, S3StorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter.js';
 import { AssertionsService } from './assertions.service.js';
 import { InstrumentsController } from './instruments.controller.js';
@@ -13,13 +16,15 @@ import { TransitionsService } from './transitions.service.js';
 
 @Module({
   imports: [JwtModule.register({})],
-  controllers: [InstrumentsController, DocumentsController],
+  controllers: [InstrumentsController, DocumentsController, OcrController],
   providers: [
     InstrumentsService,
     AssertionsService,
     TransitionsService,
     DocumentsService,
     DiscrepancyEngine,
+    OcrClient,
+    OcrIngestService,
     {
       provide: STORAGE_ADAPTER,
       useFactory: () => {
@@ -43,6 +48,8 @@ import { TransitionsService } from './transitions.service.js';
     TransitionsService,
     DocumentsService,
     DiscrepancyEngine,
+    OcrClient,
+    OcrIngestService,
     STORAGE_ADAPTER,
   ],
 })

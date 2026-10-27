@@ -1,0 +1,171 @@
+[
+  {
+    "file": "sample-01.jpg",
+    "expected": {
+      "fdr_number": "SBI/FD/2026/104211",
+      "bank_name": "State Bank of India",
+      "bank_code": "SBIN",
+      "ifsc": "SBIN0005943",
+      "amount": 1000000.0,
+      "issue_date": "2026-04-01",
+      "maturity_date": "2031-04-01",
+      "depositor_names": [
+        "AICTE",
+        "SHIKSHA PRASAR TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-02.jpg",
+    "expected": {
+      "fdr_number": "50300123456789",
+      "bank_name": "HDFC Bank",
+      "bank_code": "HDFC",
+      "ifsc": "HDFC0001234",
+      "amount": 1500000.0,
+      "issue_date": "2025-07-15",
+      "maturity_date": "2030-07-15",
+      "depositor_names": [
+        "AICTE",
+        "VIDYA VIKAS TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-03.jpg",
+    "expected": {
+      "fdr_number": "PNB-FDR-0045121",
+      "bank_name": "Punjab National Bank",
+      "bank_code": "PUNB",
+      "ifsc": "PUNB0123400",
+      "amount": 500000.0,
+      "issue_date": "2024-01-10",
+      "maturity_date": "2029-01-10",
+      "depositor_names": [
+        "AICTE",
+        "GYAN JYOTI TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-04.jpg",
+    "expected": {
+      "fdr_number": "BOB/TDR/778812",
+      "bank_name": "Bank of Baroda",
+      "bank_code": "BARB",
+      "ifsc": "BARB0VADODA",
+      "amount": 2000000.0,
+      "issue_date": "2023-11-01",
+      "maturity_date": "2028-11-01",
+      "depositor_names": [
+        "AICTE",
+        "SARASWATI SEVA TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-05.jpg",
+    "expected": {
+      "fdr_number": "CB0011223344",
+      "bank_name": "Canara Bank",
+      "bank_code": "CNRB",
+      "ifsc": "CNRB0001122",
+      "amount": 750000.0,
+      "issue_date": "2026-02-20",
+      "maturity_date": "2031-02-20",
+      "depositor_names": [
+        "AICTE",
+        "NAVNIRMAN TRUST"
+      ],
+      "lien_marked": false
+    }
+  },
+  {
+    "file": "sample-06.jpg",
+    "expected": {
+      "fdr_number": "UBI-FD-99120",
+      "bank_name": "Union Bank of India",
+      "bank_code": "UBIN",
+      "ifsc": "UBIN0531234",
+      "amount": 1200000.0,
+      "issue_date": "2022-06-30",
+      "maturity_date": "2027-06-30",
+      "depositor_names": [
+        "AICTE",
+        "PRAGATI SHIKSHA TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-07.jpg",
+    "expected": {
+      "fdr_number": "ICICI/FD/66123009",
+      "bank_name": "ICICI Bank",
+      "bank_code": "ICIC",
+      "ifsc": "ICIC0000456",
+      "amount": 1000000.0,
+      "issue_date": "2025-03-05",
+      "maturity_date": "2030-03-05",
+      "depositor_names": [
+        "AICTE",
+        "VIDYA VIKAS TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-08.jpg",
+    "expected": {
+      "fdr_number": "AXIS-TD-4455120",
+      "bank_name": "Axis Bank",
+      "bank_code": "UTIB",
+      "ifsc": "UTIB0000789",
+      "amount": 600000.0,
+      "issue_date": "2021-09-15",
+      "maturity_date": "2026-09-15",
+      "depositor_names": [
+        "AICTE",
+        "GYAN JYOTI TRUST"
+      ],
+      "lien_marked": true
+    }
+  },
+  {
+    "file": "sample-09.jpg",
+    "expected": {
+      "fdr_number": "SBI/FD/2024/880017",
+      "bank_name": "State Bank of India",
+      "bank_code": "SBIN",
+      "ifsc": "SBIN0001707",
+      "amount": 1500000.0,
+      "issue_date": "2024-08-12",
+      "maturity_date": "2029-08-12",
+      "depositor_names": [
+        "SHIKSHA PRASAR TRUST"
+      ],
+      "lien_marked": false
+    }
+  },
+  {
+    "file": "sample-10.jpg",
+    "expected": {
+      "fdr_number": "50300987650001",
+      "bank_name": "HDFC Bank",
+      "bank_code": "HDFC",
+      "ifsc": "HDFC0004321",
+      "amount": 900000.0,
+      "issue_date": "2026-01-25",
+      "maturity_date": "2031-01-25",
+      "depositor_names": [
+        "AICTE",
+        "NAVNIRMAN TRUST"
+      ],
+      "lien_marked": true
+    }
+  }
+]

@@ -50,8 +50,8 @@ export class DocumentsController {
     @Body(new ZodPipe(UploadDocumentSchema)) body: z.infer<typeof UploadDocumentSchema>,
   ) {
     if (!file) throw new InvalidInputError('Attach a file in the "file" field');
-    const doc = await this.documents.uploadForInstrument(user, id, body.type, file);
-    return { id: doc.id, version: doc.version, sha256: doc.sha256, mimeType: doc.mimeType };
+    const { doc, ocr } = await this.documents.uploadForInstrument(user, id, body.type, file);
+    return { id: doc.id, version: doc.version, sha256: doc.sha256, mimeType: doc.mimeType, ocr };
   }
 
   /** Short-lived signed link for preview (inline) or download. */

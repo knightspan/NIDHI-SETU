@@ -10,3 +10,4 @@ process.env.STORAGE_FS_ROOT = '.data/test-objects';
 process.env.BANK_ADAPTER = 'auto';
 process.env.MOCK_BANK_API_LATENCY_MS = '0';
 process.env.MOCK_BANK_API_FAILURE_RATE = '0';
+process.env.OCR_URL = 'http://127.0.0.1:9';

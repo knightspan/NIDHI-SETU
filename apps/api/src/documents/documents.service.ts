@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { DocumentType } from '@nidhisetu/shared';
+import type { DocumentType, OcrPreview } from '@nidhisetu/shared';
 import { AuditService } from '../audit/audit.service.js';
 import { actorOf, type Actor } from '../common/actor.js';
 import { open, seal, sha256Hex } from '../common/crypto.js';
@@ -12,6 +12,7 @@ import { safeFileName, sniffFileType } from '../domain/file-sniff.js';
 import { instrumentScope, type Principal } from '../domain/scope.js';
 import type { Document, Prisma } from '../generated/prisma/client.js';
 import { InstrumentsService } from '../instruments/instruments.service.js';
+import { OcrIngestService } from '../ocr/ocr-ingest.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { STORAGE_ADAPTER, type StorageAdapter } from '../storage/storage.adapter.js';
 
@@ -36,6 +37,7 @@ export class DocumentsService {
     private readonly audit: AuditService,
     private readonly clock: ClockService,
     private readonly jwt: JwtService,
+    private readonly ocr: OcrIngestService,
     @Inject(STORAGE_ADAPTER) private readonly storage: StorageAdapter,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
@@ -107,18 +109,21 @@ export class DocumentsService {
     return doc;
   }
 
-  /** Upload against an instrument the principal can see and may currently upload to. */
+  /**
+   * Upload against an instrument the principal can see and may currently upload to. An FDR scan is
+   * also run through OCR (after the upload commits) and its fields recorded as OCR_EXTRACTED.
+   */
   async uploadForInstrument(
     p: Principal,
     instrumentId: string,
     type: DocumentType,
     file: UploadedFile,
-  ): Promise<Document> {
+  ): Promise<{ doc: Document; ocr: OcrPreview | null }> {
     const inst = await this.instruments.getScoped(p, instrumentId);
     if (p.role !== 'BANK_OFFICER') await this.instruments.assertAction(p, inst, 'upload');
     const actor = actorOf(p);
-    return this.prisma.$transaction(async (tx) => {
-      const doc = await this.store(tx, {
+    const doc = await this.prisma.$transaction(async (tx) => {
+      const d = await this.store(tx, {
         file,
         type,
         instrumentId,
@@ -126,8 +131,15 @@ export class DocumentsService {
         actor,
       });
       await this.instruments.afterChange(tx, instrumentId, actor);
-      return doc;
+      return d;
     });
+    const ocr =
+      type === 'FDR_SCAN'
+        ? await this.ocr.ingest(instrumentId, doc, file.buffer, actor, (id) =>
+            this.prisma.$transaction((tx) => this.instruments.afterChange(tx, id, actor)),
+          )
+        : null;
+    return { doc, ocr };
   }
 
   /** A document is visible when its instrument is visible to the principal. */

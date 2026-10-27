@@ -219,8 +219,7 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 ### Phase 8 — Dashboard & reports ✅
 
 - [x] Scoped dashboard: held amount, KPI tiles (active, expiring 30/60/90, matured, overdue, renewed,
-      released, pending verification, open discrepancies, fraud signals), validity mix (status colours
-      + labels), charts by status / region / bank with hover tooltips and table views, role work queues
+      released, pending verification, open discrepancies, fraud signals), validity mix (status colours + labels), charts by status / region / bank with hover tooltips and table views, role work queues
 - [x] Global header search (institutions + instruments, scoped), per-user saved filters
 - [x] Institutions list with requirement vs held and compliance (compliant / shortfall / exempt),
       institution statement page
@@ -232,10 +231,12 @@ _renewal_, _discrepancy identification_, _authorized release processing_.
 - [x] Tests: dashboard scoping, compliance, search, all report formats, metrics + baselines,
       saved filters, CSV escaping
 
-### Phase 9 — OCR & legacy digitisation
+### Phase 9 — OCR & legacy digitisation ✅
 
-- [ ] `/extract` with PaddleOCR (Tesseract fallback) + rule-based extraction; 10 synthetic samples
-- [ ] Bulk legacy upload (ZIP / multi-file), review drafts, reconciliation report
+- [x] `/extract` with PP-OCR models (RapidOCR on ONNX; PaddleOCR if installed; Tesseract fallback) + rule-based extraction; 10 synthetic samples (70/70 fields)
+- [x] Optional Claude extraction (`LLM_EXTRACTION=true`), off by default
+- [x] Scan upload records OCR_EXTRACTED assertions with confidence + evidence link; "Upload scan to pre-fill" on the new-FDR form
+- [x] Bulk legacy upload (ZIP / multi-file), background OCR, officer review → legacy instrument under scrutiny, reconciliation report (JSON/CSV)
 
 ### Phase 10 — i18n, a11y, security
 

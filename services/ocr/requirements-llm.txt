@@ -1,0 +1,2 @@
+# Optional: LLM-assisted extraction (LLM_EXTRACTION=true). Not needed for the offline demo.
+anthropic

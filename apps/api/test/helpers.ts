@@ -11,12 +11,17 @@ import { configureApp } from '../src/app.setup.js';
 import { hashPassword } from '../src/auth/auth.service.js';
 import { sealString } from '../src/common/crypto.js';
 import { getConfig } from '../src/config/config.js';
+import { OcrClient } from '../src/ocr/ocr.client.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { FakeOcrClient } from './fake-ocr.js';
 
 export const TEST_PASSWORD = 'Test-Password-2026';
 
 export async function createTestApp(): Promise<INestApplication> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(OcrClient)
+    .useValue(new FakeOcrClient())
+    .compile();
   const app = moduleRef.createNestApplication({ logger: ['error'] });
   configureApp(app);
   await app.init();
@@ -228,6 +233,18 @@ export class Client {
   ) {
     let r = this.agent.post(url).set('x-csrf-token', this.csrf).attach(field, file, filename);
     for (const [k, v] of Object.entries(fields)) r = r.field(k, v);
+    return r;
+  }
+  /** Multipart upload of several files under one field. */
+  uploadMany(
+    url: string,
+    field: string,
+    files: { file: Buffer; name: string }[],
+    fields: Record<string, string> = {},
+  ) {
+    let r = this.agent.post(url).set('x-csrf-token', this.csrf);
+    for (const [k, v] of Object.entries(fields)) r = r.field(k, v);
+    for (const f of files) r = r.attach(field, f.file, f.name);
     return r;
   }
 }

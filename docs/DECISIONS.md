@@ -143,3 +143,21 @@ additional SLA period. Items with a 0-day SLA (overdue renewals) escalate immedi
 **Context:** BullMQ 6 treats `ioredis` as optional and cannot load it from connection options in native ESM.
 **Decision:** Depend on `ioredis` directly and pass a constructed client (`maxRetriesPerRequest: null`).
 Without Redis (or with `QUEUE_ENABLED=false`) the same jobs run from admin endpoints.
+
+### D-022 · OCR engine: PP-OCR models through RapidOCR (2026-10-27)
+
+**Context:** The brief asks for PaddleOCR with a Tesseract fallback. The PaddlePaddle wheels are large
+(~1 GB with dependencies) and not available for every Python/OS combination we target.
+**Decision:** The OCR service runs the same PP-OCR detection/recognition models through RapidOCR on
+ONNX Runtime (bundled models, CPU only). If `paddleocr` is installed (`requirements-paddle.txt`) it is
+preferred; Tesseract is the last fallback. `/health` reports the engine in use. Field extraction is
+rule-based and deterministic; an LLM pass is optional and off by default.
+**Consequence:** OCR output is only ever recorded at `OCR_EXTRACTED` trust and never auto-promoted; the
+API treats an unreachable OCR service as "no OCR" so uploads never fail because of it.
+
+### D-023 · Legacy records enter at scrutiny, not active (2026-10-27)
+
+**Decision:** Confirming a legacy scan creates a `legacy` instrument with OCR_EXTRACTED (scan) and
+OFFICER_VERIFIED (officer's reading of the physical original) assertions and moves it straight to
+UNDER_SCRUTINY. It still needs bank confirmation like any other deposit; digitisation alone never makes a
+record ACTIVE. Disagreements between the scan and the officer's values surface as mismatches.
