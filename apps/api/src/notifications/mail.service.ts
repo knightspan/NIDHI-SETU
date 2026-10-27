@@ -1,3 +1,4 @@
+import { maskEmail } from '../common/pii.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
@@ -39,13 +40,4 @@ export class MailService {
     });
     this.logger.debug(`mail sent to ${maskEmail(m.to)}: ${m.subject}`);
   }
-}
-
-export function maskEmail(email: string): string {
-  const [local = '', domain = ''] = email.split('@');
-  return `${local.slice(0, 1)}***@${domain}`;
-}
-
-export function maskPhone(phone: string): string {
-  return phone.replace(/\d(?=\d{2})/g, '•');
 }

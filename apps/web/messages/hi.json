@@ -47,7 +47,8 @@
     "language": "भाषा",
     "signOut": "साइन आउट",
     "profile": "प्रोफ़ाइल",
-    "total": "कुल"
+    "total": "कुल",
+    "pagination": "पृष्ठांकन"
   },
   "nav": {
     "main": "मुख्य नेविगेशन",

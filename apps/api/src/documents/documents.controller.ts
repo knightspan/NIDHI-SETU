@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -31,6 +32,7 @@ export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
 
   @RequirePermission('document:upload')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('instruments/:id/documents')
   @ApiConsumes('multipart/form-data')
   @ApiBody({

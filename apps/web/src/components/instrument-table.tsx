@@ -122,7 +122,7 @@ export function InstrumentTable({
         </TBody>
       </Table>
       {pages > 1 && onPage && (
-        <nav className="flex items-center justify-end gap-2" aria-label="Pagination">
+        <nav className="flex items-center justify-end gap-2" aria-label={t('common.pagination')}>
           <Button
             variant="secondary"
             size="sm"

@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { maskPhone } from './mail.service.js';
+import { maskPhone } from '../common/pii.js';
 
 /** SMS channel (Section 7 · cap 7). A DLT-registered gateway would implement this interface. */
 export interface SmsAdapter {

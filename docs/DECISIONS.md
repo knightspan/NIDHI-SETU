@@ -161,3 +161,16 @@ API treats an unreachable OCR service as "no OCR" so uploads never fail because 
 OFFICER_VERIFIED (officer's reading of the physical original) assertions and moves it straight to
 UNDER_SCRUTINY. It still needs bank confirmation like any other deposit; digitisation alone never makes a
 record ACTIVE. Disagreements between the scan and the officer's values surface as mismatches.
+
+### D-024 · Retention never deletes automatically (2026-10-27)
+
+**Decision:** `RETENTION_YEARS_CLOSED_RECORDS` (placeholder 8 years — ASSUMPTION, verify against AICTE
+policy) only drives a review list (`GET /api/admin/retention`). Purging financial evidence is a legal
+decision, and the audit log is append-only by design, so the system never deletes on a timer.
+
+### D-025 · Web CSP keeps `'unsafe-inline'` for scripts (2026-10-27)
+
+**Context:** Next.js inlines its bootstrap scripts; a nonce-based CSP forces every page to render
+dynamically. **Decision:** Production CSP allows inline scripts but restricts every source to the
+portal's own origin (no third-party scripts, `frame-ancestors 'none'`, `object-src 'none'`). Moving to
+nonces is listed in KNOWN_LIMITATIONS.

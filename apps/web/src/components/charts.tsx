@@ -52,7 +52,7 @@ export function ChartCard({
       <CardHeader title={title} description={description} as="h3" />
       <CardBody className="space-y-2">
         {children}
-        <details className="text-sm">
+        <details className="relative text-sm">
           <summary className="cursor-pointer text-xs font-medium text-brand-700">
             {t('showTable')}
           </summary>

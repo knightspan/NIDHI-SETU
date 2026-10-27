@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -63,11 +64,12 @@ export function Alert({
   );
 }
 
-export function Spinner({ label = 'Loading…', className }: { label?: string; className?: string }) {
+export function Spinner({ label, className }: { label?: string; className?: string }) {
+  const t = useTranslations('common');
   return (
     <div role="status" className={cn('flex items-center gap-2 text-sm text-slate-600', className)}>
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-      <span>{label}</span>
+      <span>{label ?? t('loading')}</span>
     </div>
   );
 }
@@ -103,6 +105,7 @@ export function Dialog({
   footer?: ReactNode;
   wide?: boolean;
 }) {
+  const t = useTranslations('common');
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -133,7 +136,7 @@ export function Dialog({
               type="button"
               onClick={onClose}
               className="rounded p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600"
-              aria-label="Close"
+              aria-label={t('close')}
             >
               <X className="h-5 w-5" />
             </button>

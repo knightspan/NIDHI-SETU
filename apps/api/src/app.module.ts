@@ -19,6 +19,7 @@ import { JobsModule } from './jobs/jobs.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { RulesController } from './rules/rules.controller.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { IntegrationsModule } from './integrations/integrations.module.js';
 import { LegacyModule } from './legacy/legacy.module.js';
 import { OversightModule } from './oversight/oversight.module.js';
 import { ReleasesModule } from './releases/releases.module.js';
@@ -49,6 +50,7 @@ import { RulesModule } from './rules/rules.module.js';
     ReleasesModule,
     OversightModule,
     LegacyModule,
+    IntegrationsModule,
     JobsModule.register(),
   ],
   controllers: [HealthController, RulesController],

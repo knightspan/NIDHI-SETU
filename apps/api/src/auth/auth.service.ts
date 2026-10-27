@@ -1,3 +1,4 @@
+import { maskEmail } from '../common/pii.js';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { MFA_MANDATORY_ROLES, permissionsFor, type LoginResult, type Me } from '@nidhisetu/shared';
@@ -286,12 +287,6 @@ export class AuthService {
     }
     return { accessToken, refreshToken };
   }
-}
-
-/** PII masking for logs and audit payloads: a****@example.com */
-export function maskEmail(email: string): string {
-  const [local = '', domain = ''] = email.split('@');
-  return `${local.slice(0, 1)}${'*'.repeat(Math.max(1, local.length - 1))}@${domain}`;
 }
 
 // argon2id hash of a random string, used to equalise timing for unknown users.

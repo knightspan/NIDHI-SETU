@@ -103,6 +103,8 @@ export function OcrPrefill({ onResult }: { onResult: (preview: OcrPreview, file:
             accept="application/pdf,image/png,image/jpeg"
             className="sr-only"
             id="ocr-file"
+            aria-label={t('title')}
+            tabIndex={-1}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void read(f);

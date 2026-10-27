@@ -11,14 +11,13 @@ const inst = [
   },
   { id: '2', name: 'Vidya College', aicteId: 'A-2', trustName: 'Vidya Society' },
 ];
-const ocr = (names: string): OcrPreview =>
-  ({
-    fields: { depositorNames: names },
-    confidence: {},
-    lowConfidence: [],
-    rawText: '',
-    engine: 'x',
-  }) as OcrPreview;
+const ocr = (names: string): OcrPreview => ({
+  fields: { depositorNames: names },
+  confidence: {},
+  lowConfidence: [],
+  rawText: '',
+  engine: 'x',
+});
 
 describe('suggestInstitution', () => {
   it('matches the trust named alongside AICTE', () => {

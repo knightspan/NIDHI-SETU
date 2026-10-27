@@ -47,7 +47,8 @@
     "language": "Language",
     "signOut": "Sign out",
     "profile": "Profile",
-    "total": "Total"
+    "total": "Total",
+    "pagination": "Pagination"
   },
   "nav": {
     "main": "Main navigation",

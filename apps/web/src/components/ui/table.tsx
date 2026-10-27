@@ -7,7 +7,7 @@ export function Table({
   ...props
 }: HTMLAttributes<HTMLTableElement> & { caption?: string }) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="relative w-full overflow-x-auto">
       <table className={cn('w-full border-collapse text-sm', className)} {...props}>
         {caption && <caption className="sr-only">{caption}</caption>}
         {props.children}

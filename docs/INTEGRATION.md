@@ -109,6 +109,10 @@ programmes, year of establishment). The mock reads fictional data; a real implem
 approval portal's API (or a nightly extract) and is used to pre-fill and periodically refresh `Institution`
 rows, so required-amount rules always use current programmes.
 
+`GET /api/integrations/aicte/:aicteId` (SYS_ADMIN) fetches the portal record and lists the fields where
+it differs from the local master (programmes compared as a set). The mock mirrors the local data and
+reports an extra programme for AICTE IDs ending in 7, to demonstrate drift detection.
+
 ## 3. Notifications
 
 Email goes through SMTP (Mailpit in development). SMS uses `SmsAdapter`; the stub logs messages with the

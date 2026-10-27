@@ -184,7 +184,7 @@ function ReviewPanel({ item, onDone }: { item: LegacyItemView; onDone: () => voi
   return (
     <Card ref={panel} tabIndex={-1} className="scroll-mt-4">
       <CardHeader title={t('reviewTitle', { file: item.fileName })} description={t('reviewHint')} />
-      <CardBody className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <CardBody className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="min-h-96 self-start overflow-hidden rounded-md border border-slate-200 bg-slate-50 lg:sticky lg:top-4">
           {!url ? (
             <Skeleton className="h-96" />

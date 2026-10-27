@@ -208,7 +208,10 @@ function Inner() {
                           <summary className="cursor-pointer text-brand-700">
                             {t('details')}
                           </summary>
-                          <pre className="mt-1 max-w-md overflow-auto rounded bg-slate-50 p-2 text-[11px]">
+                          <pre
+                            tabIndex={0}
+                            className="mt-1 max-w-md overflow-auto rounded bg-slate-50 p-2 text-[11px]"
+                          >
                             {JSON.stringify(r.data, null, 2)}
                           </pre>
                         </details>

@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Controller, HttpCode, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
@@ -17,6 +18,8 @@ export class OcrController {
 
   /** Reads a scan and returns suggested field values for pre-filling a form. Nothing is stored. */
   @RequirePermission('document:upload')
+  // OCR is CPU-heavy: cap per-client usage.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('preview')
   @HttpCode(200)
   @ApiConsumes('multipart/form-data')

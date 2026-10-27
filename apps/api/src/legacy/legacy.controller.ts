@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -43,6 +44,7 @@ export class LegacyController {
 
   /** Bulk upload of physical-FDR scans: multiple PDFs / images, or ZIP archives of them. */
   @RequirePermission('legacy:upload')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('batches')
   @ApiConsumes('multipart/form-data')
   @ApiBody({

@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -84,6 +85,8 @@ export class OversightController {
   // ─── Reports ──────────────────────────────────────────────────────────────
 
   @RequirePermission('report:read')
+  // Exports scan whole tables.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get('reports/:type')
   @ApiZodQuery(ReportQuerySchema)
   async report(

@@ -37,7 +37,7 @@ export function FieldsPanel({
         <div className="px-4 pt-3">
           <TrustLegend />
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">{t('instruments.fieldsTitle')}</caption>
             <thead className="bg-slate-50 text-left text-xs text-slate-600 uppercase">

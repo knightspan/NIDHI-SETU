@@ -93,7 +93,10 @@ export default function RulesPage() {
                 {t('source')}: {r.current?.source}
               </p>
               {r.current?.note && <p className="text-xs text-slate-600">{r.current.note}</p>}
-              <pre className="max-h-56 overflow-auto rounded bg-slate-50 p-2 text-xs text-slate-800">
+              <pre
+                tabIndex={0}
+                className="max-h-56 overflow-auto rounded bg-slate-50 p-2 text-xs text-slate-800"
+              >
                 {JSON.stringify(r.current?.config, null, 2)}
               </pre>
               {r.scheduled.length > 0 && (
@@ -126,7 +129,10 @@ export default function RulesPage() {
                 {t('source')}: {h.source} · {formatDateTime(h.createdAt)}
               </p>
               {h.note && <p className="text-xs text-slate-600">{h.note}</p>}
-              <pre className="mt-1 max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs">
+              <pre
+                tabIndex={0}
+                className="mt-1 max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs"
+              >
                 {JSON.stringify(h.config, null, 2)}
               </pre>
             </li>

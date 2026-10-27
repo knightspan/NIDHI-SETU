@@ -23,6 +23,34 @@ describe('RBAC: administration endpoints', () => {
     await anon.get('/api/master/banks').expect(401);
   });
 
+  it('limits the AICTE portal lookup to SYS_ADMIN and reports master drift', async () => {
+    for (const role of ROLES) {
+      if (role === 'SYS_ADMIN') continue;
+      const res = await clients.get(role)!.get('/api/integrations/aicte/T-x');
+      expect([role, res.status]).toEqual([role, 403]);
+    }
+    const admin = clients.get('SYS_ADMIN')!;
+    const aicteId = `T-${fx.tag}-A`;
+    const r = (await admin.get(`/api/integrations/aicte/${aicteId}`).expect(200)).body as {
+      portal: { aicteId: string; approvalStatus: string };
+      local: { id: string } | null;
+      differences: unknown[];
+    };
+    expect(r.portal).toMatchObject({ aicteId, approvalStatus: 'APPROVED' });
+    expect(r.local?.id).toBe(fx.institutionId);
+    expect(r.differences).toEqual([]);
+    await admin.get('/api/integrations/aicte/NO-SUCH-ID').expect(404);
+  });
+
+  it('shows retention review to auditors and admins only', async () => {
+    for (const role of ROLES) {
+      const res = await clients.get(role)!.get('/api/admin/retention');
+      const allowed = role === 'SYS_ADMIN' || role === 'AUDITOR';
+      expect([role, res.status]).toEqual([role, allowed ? 200 : 403]);
+      if (allowed) expect(res.body).toMatchObject({ retentionYears: expect.any(Number) as number });
+    }
+  });
+
   it('allows only SYS_ADMIN to manage users', async () => {
     for (const role of ROLES) {
       const res = await clients.get(role)!.get('/api/admin/users');
