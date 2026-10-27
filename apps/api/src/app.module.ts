@@ -1,7 +1,8 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
+import { AppThrottlerGuard } from './common/throttler.guard.js';
 import { InstrumentsModule } from './instruments/instruments.module.js';
 import { ScrutinyModule } from './discrepancies/scrutiny.module.js';
 import { AuditModule } from './audit/audit.module.js';
@@ -56,7 +57,7 @@ import { RulesModule } from './rules/rules.module.js';
   controllers: [HealthController, RulesController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_INTERCEPTOR, useClass: ClockSyncInterceptor },

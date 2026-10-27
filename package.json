@@ -22,7 +22,8 @@
     "demo:reset": "pnpm --filter @nidhisetu/api demo:reset",
     "demo:otp": "pnpm --filter @nidhisetu/api demo:otp",
     "seed:docker": "docker compose exec api node dist/scripts/cli-seed.js",
-    "demo:reset:docker": "docker compose exec api node dist/scripts/cli-demo-reset.js"
+    "demo:reset:docker": "docker compose exec api node dist/scripts/cli-demo-reset.js",
+    "e2e": "pnpm --filter @nidhisetu/web e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
