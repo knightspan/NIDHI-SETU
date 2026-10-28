@@ -3,6 +3,7 @@ import { HELD_STATES, METRIC_KEYS, type MetricKey, type MetricView } from '@nidh
 import { AuditService } from '../audit/audit.service.js';
 import type { Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
+import { manualEditsPerInstrument } from '../domain/effort.js';
 import { BANK_CONFIRMABLE_FIELDS } from '../domain/trust.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -13,7 +14,17 @@ const META: Record<MetricKey, Pick<MetricView, 'unit' | 'betterWhen'>> = {
   release_processing_days: { unit: 'days', betterWhen: 'lower' },
   open_discrepancy_age_days: { unit: 'days', betterWhen: 'lower' },
   fully_bank_confirmed_pct: { unit: 'percent', betterWhen: 'higher' },
+  manual_edits_per_instrument: { unit: 'count', betterWhen: 'lower' },
+  registers_retired: { unit: 'count', betterWhen: 'higher' },
 };
+
+/** Admin-entered count of paper registers retired (SystemSetting). */
+export const REGISTERS_SETTING = 'manual_registers';
+interface RegistersSetting {
+  retired: number;
+  total?: number;
+  note?: string;
+}
 
 const round = (n: number | null) =>
   n === null || Number.isNaN(n) ? null : Math.round(n * 10) / 10;
@@ -40,6 +51,8 @@ export class MetricsService {
       this.releaseProcessing(),
       this.discrepancyAgeing(),
       this.fullyBankConfirmed(),
+      this.manualEdits(),
+      this.registersRetired(),
     ]);
     return values.map((v) => ({
       ...v,
@@ -143,6 +156,59 @@ export class MetricsService {
       value: n ? round((Number(r!.full) / n) * 100) : null,
       sampleSize: n,
     };
+  }
+
+  /**
+   * Manual effort: values people typed over an existing value (audit `field.edited`), per
+   * instrument that has been submitted.
+   */
+  private async manualEdits() {
+    const [edits, n] = await Promise.all([
+      this.prisma.auditEvent.findMany({
+        where: { action: 'field.edited', entityType: 'Instrument' },
+        select: { entityId: true },
+      }),
+      this.prisma.instrument.count({ where: { status: { not: 'DRAFT' } } }),
+    ]);
+    const r = manualEditsPerInstrument(
+      edits.filter((e) => !!e.entityId).map((e) => ({ instrumentId: e.entityId! })),
+      n,
+    );
+    return {
+      key: 'manual_edits_per_instrument' as const,
+      value: n ? r.perInstrument : null,
+      sampleSize: n,
+      detail: { edits: r.edits, instrumentsEdited: r.instrumentsEdited, median: r.median },
+    };
+  }
+
+  /** Paper registers retired (admin input): the work the portal replaced. */
+  private async registersRetired() {
+    const row = await this.prisma.systemSetting.findUnique({ where: { key: REGISTERS_SETTING } });
+    const v = (row?.value ?? null) as RegistersSetting | null;
+    return {
+      key: 'registers_retired' as const,
+      value: v ? v.retired : null,
+      sampleSize: v?.total ?? 0,
+      detail: { total: v?.total ?? null, note: v?.note ?? null },
+    };
+  }
+
+  async setRegisters(input: RegistersSetting, actor: Actor) {
+    const value = { retired: input.retired, total: input.total, note: input.note };
+    await this.prisma.systemSetting.upsert({
+      where: { key: REGISTERS_SETTING },
+      create: { key: REGISTERS_SETTING, value, updatedById: actor.id },
+      update: { value, updatedById: actor.id },
+    });
+    await this.audit.record({
+      actor,
+      action: 'metrics.registers_set',
+      entityType: 'MetricBaseline',
+      entityId: REGISTERS_SETTING,
+      data: value,
+    });
+    return value;
   }
 
   async setBaseline(key: string, value: number, note: string | undefined, actor: Actor) {

@@ -20,7 +20,8 @@
     "test:coverage": "vitest run --project unit --coverage",
     "build:scripts": "tsc -p tsconfig.build.json --incremental",
     "load-test": "pnpm -s build:scripts && node dist/scripts/cli-load-test.js",
-    "tamper": "pnpm -s build:scripts && node dist/scripts/cli-tamper.js"
+    "tamper": "pnpm -s build:scripts && node dist/scripts/cli-tamper.js",
+    "ifsc:import": "pnpm -s build:scripts && node dist/scripts/cli-ifsc-import.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

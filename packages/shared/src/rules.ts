@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { DOCUMENT_TYPES, PROGRAMME_CODES, ROLES, SEVERITIES } from './enums.js';
+import {
+  COMPOUNDING_FREQUENCIES,
+  DOCUMENT_TYPES,
+  PROGRAMME_CODES,
+  ROLES,
+  SEVERITIES,
+} from './enums.js';
 
 /**
  * Configurable rule definitions (Section 3.3). Every rule is stored in the DB as versioned JSON;
@@ -46,6 +52,10 @@ export const EscalationRuleSchema = z.object({
   bankConfirmationDays: positiveInt,
   releaseDecisionDays: positiveInt,
   overdueRenewalDays: nonNegativeInt,
+  /** Days an institution has to upload the year's AIS once it is requested (TRINETRA tax eye). */
+  aisUploadDays: positiveInt.default(30),
+  /** Days the competent authority has to decide a forfeiture proposal. */
+  forfeitureDecisionDays: positiveInt.default(15),
   /** Escalation ladder; level 1 goes to ladder[0], level 2 to ladder[1], … */
   ladder: z.array(role).min(1),
 });
@@ -90,6 +100,10 @@ export type DiscrepancyRuleCode = (typeof DISCREPANCY_RULE_CODES)[number];
 export const MANUAL_DISCREPANCY_CODE = 'MANUAL';
 /** Code used when a bank denies or contradicts a confirmation request. */
 export const BANK_DENIAL_CODE = 'BANK_DENIED';
+/** Raised by the TRINETRA tax eye when bank-reported interest falls short ("trail broken"). */
+export const TAX_TRAIL_CODE = 'TAX_TRAIL_BROKEN';
+/** Raised by the TRINETRA document eye (maturity math, IFSC master, duplicates). */
+export const DOCUMENT_CHECK_CODE = 'DOCUMENT_CHECK_FAILED';
 
 export const DiscrepancyRulesSchema = z.object({
   rules: z
@@ -107,6 +121,59 @@ export const DiscrepancyRulesSchema = z.object({
   mandatoryDocuments: z.array(z.enum(DOCUMENT_TYPES)),
 });
 
+const pct = z.number().min(0).max(100);
+
+/** TRINETRA verification signals (addendum §1, §3). */
+export const VerificationRuleSchema = z.object({
+  /** A bank confirmation becomes STALE after this many months. */
+  bankStaleMonths: positiveInt,
+  /** Release / forfeiture approval needs a bank PASS no older than this. */
+  gateBankPassMaxAgeDays: positiveInt,
+  /** Maturity-math check: allowed difference between computed and printed maturity value. */
+  maturityTolerancePct: pct,
+  /** Used for banks with no compounding configured. */
+  defaultCompounding: z.enum(COMPOUNDING_FREQUENCIES),
+  /** Tax heartbeat: bank-reported interest may fall short of expected by at most this much. */
+  taxTolerancePct: pct,
+  /** Date (MM-DD) after a financial year ends when its AIS is requested. */
+  aisRequestMonthDay: z.string().regex(/^\d{2}-\d{2}$/, 'MM-DD'),
+  /** At most this many scheduled re-attestation requests per day (spreads the banks' load). */
+  reattestationDailyCap: positiveInt.default(200),
+});
+
+const credit = z.number().min(0).max(1);
+
+/** Trust score 0–100 (addendum §2). */
+export const TrustWeightsRuleSchema = z.object({
+  /** Relative weights of field provenance and the three eyes (normalised to 100). */
+  weights: z.object({
+    provenance: z.number().nonnegative(),
+    bank: z.number().nonnegative(),
+    tax: z.number().nonnegative(),
+    document: z.number().nonnegative(),
+  }),
+  /** Share of an eye's weight earned by each result. */
+  credit: z.object({ PASS: credit, STALE: credit, NOT_AVAILABLE: credit, FAIL: credit }),
+  /** A signal's credit decays linearly to `minAgeFactor` over this many months. */
+  ageDecayMonths: positiveInt,
+  minAgeFactor: credit,
+});
+
+/** Risk level LOW / MEDIUM / HIGH from risk points. */
+export const RiskWeightsRuleSchema = z.object({
+  /** Points when trust is 0 (scaled linearly; trust 100 → 0 points). */
+  lowTrust: z.number().nonnegative(),
+  /** Points per open HIGH discrepancy (counted up to 3). */
+  openHighDiscrepancy: z.number().nonnegative(),
+  /** Points per eye whose latest result is FAIL. */
+  failedSignal: z.number().nonnegative(),
+  nearMaturityDays: positiveInt,
+  nearMaturity: z.number().nonnegative(),
+  matured: z.number().nonnegative(),
+  mediumAt: z.number().positive(),
+  highAt: z.number().positive(),
+});
+
 /** Rule codes: one row family per code, versioned. */
 export const RULE_DEFINITIONS = {
   'eligibility.exemption': { type: 'ELIGIBILITY', schema: EligibilityRuleSchema },
@@ -119,6 +186,9 @@ export const RULE_DEFINITIONS = {
     schema: ReleasePreconditionsRuleSchema,
   },
   'discrepancy.rules': { type: 'DISCREPANCY', schema: DiscrepancyRulesSchema },
+  'verification.signals': { type: 'VERIFICATION', schema: VerificationRuleSchema },
+  'trust.weights': { type: 'TRUST', schema: TrustWeightsRuleSchema },
+  'risk.weights': { type: 'RISK', schema: RiskWeightsRuleSchema },
 } as const;
 
 export type RuleCode = keyof typeof RULE_DEFINITIONS;
@@ -132,6 +202,9 @@ export type ReminderRule = RuleConfig<'reminders.maturity'>;
 export type EscalationRule = RuleConfig<'escalation.sla'>;
 export type ReleasePreconditionsRule = RuleConfig<'release.preconditions'>;
 export type DiscrepancyRules = RuleConfig<'discrepancy.rules'>;
+export type VerificationRule = RuleConfig<'verification.signals'>;
+export type TrustWeightsRule = RuleConfig<'trust.weights'>;
+export type RiskWeightsRule = RuleConfig<'risk.weights'>;
 
 export function parseRuleConfig<C extends RuleCode>(code: C, config: unknown): RuleConfig<C> {
   return RULE_DEFINITIONS[code].schema.parse(config) as RuleConfig<C>;
@@ -170,6 +243,8 @@ export const DEFAULT_RULES: { [C in RuleCode]: RuleConfig<C> } = {
     bankConfirmationDays: 7,
     releaseDecisionDays: 15,
     overdueRenewalDays: 0,
+    aisUploadDays: 30,
+    forfeitureDecisionDays: 15,
     ladder: ['RO_OFFICER', 'BUREAU_OFFICER', 'COMPETENT_AUTHORITY'],
   },
   'release.preconditions': {
@@ -197,5 +272,30 @@ export const DEFAULT_RULES: { [C in RuleCode]: RuleConfig<C> } = {
     ],
     jointNameRequired: true,
     mandatoryDocuments: ['FDR_SCAN'],
+  },
+  'verification.signals': {
+    bankStaleMonths: 12,
+    gateBankPassMaxAgeDays: 30,
+    maturityTolerancePct: 1,
+    defaultCompounding: 'QUARTERLY',
+    taxTolerancePct: 10,
+    aisRequestMonthDay: '06-15',
+    reattestationDailyCap: 200,
+  },
+  'trust.weights': {
+    weights: { provenance: 40, bank: 30, tax: 15, document: 15 },
+    credit: { PASS: 1, STALE: 0.4, NOT_AVAILABLE: 0.5, FAIL: 0 },
+    ageDecayMonths: 12,
+    minAgeFactor: 0.5,
+  },
+  'risk.weights': {
+    lowTrust: 4,
+    openHighDiscrepancy: 3,
+    failedSignal: 3,
+    nearMaturityDays: 30,
+    nearMaturity: 1,
+    matured: 2,
+    mediumAt: 3,
+    highAt: 6,
   },
 };

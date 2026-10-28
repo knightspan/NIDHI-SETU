@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { LifecycleStatus, ValidityStatus } from '../enums.js';
+import type { LifecycleStatus, TrustTier, ValidityStatus } from '../enums.js';
 import type { InstrumentSummary } from './instrument.js';
 
 export interface DashboardKpis {
@@ -35,6 +35,8 @@ export interface DashboardData {
   byRegion: { regionId: string; name: string; count: number; amount: string }[];
   byBank: { code: string; name: string; count: number; amount: string }[];
   queue: QueueItem[];
+  /** Held deposits per region by trust tier (bank-confirmed / officer-verified / unverified). */
+  trustMix: ({ region: string; total: number } & Record<TrustTier, number>)[];
   generatedInMs: number;
 }
 
@@ -94,12 +96,14 @@ export const METRIC_KEYS = [
   'release_processing_days',
   'open_discrepancy_age_days',
   'fully_bank_confirmed_pct',
+  'manual_edits_per_instrument',
+  'registers_retired',
 ] as const;
 export type MetricKey = (typeof METRIC_KEYS)[number];
 
 export interface MetricView {
   key: MetricKey;
-  unit: 'days' | 'percent';
+  unit: 'days' | 'percent' | 'count';
   betterWhen: 'lower' | 'higher';
   value: number | null;
   sampleSize: number;
@@ -107,6 +111,8 @@ export interface MetricView {
   baselineNote: string | null;
   /** Optional breakdown, e.g. discrepancy ageing buckets. */
   buckets?: { label: string; count: number }[];
+  /** Extra context, e.g. registers retired out of how many, or the median edits. */
+  detail?: Record<string, number | string | null>;
 }
 
 export const MetricBaselineSchema = z.object({

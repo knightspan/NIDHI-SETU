@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { BANK_REQUEST_STATUSES, type BankChannel, type BankRequestStatus } from '../enums.js';
+import {
+  BANK_REQUEST_STATUSES,
+  type BankChannel,
+  type BankRequestPurpose,
+  type BankRequestStatus,
+} from '../enums.js';
 import { isoDate } from '../fields.js';
 
 /** The confirmations a bank gives (Section 3.2), plus the principal amount. */
@@ -49,6 +54,9 @@ export interface BankSnapshot {
 export interface BankRequestView {
   id: string;
   instrumentId: string;
+  /** INITIAL confirmation or a REATTESTATION of an active deposit. */
+  purpose: BankRequestPurpose;
+  reason: string | null;
   bankCode: string;
   bankName: string;
   channel: BankChannel;

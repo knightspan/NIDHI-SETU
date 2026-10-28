@@ -39,6 +39,8 @@ export function toSummary(i: InstrumentWithSummary): InstrumentSummary {
     issueDate: i.issueDate ? toIso(i.issueDate) : null,
     maturityDate: i.maturityDate ? toIso(i.maturityDate) : null,
     trustScore: i.trustScore,
+    riskLevel: i.riskLevel,
+    riskScore: i.riskScore,
     mismatchCount: i.mismatchCount,
     openDiscrepancies: i._count.discrepancies,
     legacy: i.legacy,

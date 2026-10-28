@@ -31,7 +31,13 @@ import { AssertionsService } from '../instruments/assertions.service.js';
 import { InstrumentsService, declarationToAssertions } from '../instruments/instruments.service.js';
 import { TransitionsService } from '../instruments/transitions.service.js';
 import { LifecycleService } from '../jobs/lifecycle.service.js';
+import { ForfeitureService } from '../forfeiture/forfeiture.service.js';
 import { LegacyService } from '../legacy/legacy.service.js';
+import { TaxService } from '../tax/tax.service.js';
+import { maturityValueFor, tenureYears } from '../domain/maturity-math.js';
+import { expectedInterestForFy } from '../domain/tax-heartbeat.js';
+import { HELD_STATES } from '@nidhisetu/shared';
+import { SEED_BANKS, SEED_IFSC } from './seed-master.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ReleasesService } from '../releases/releases.service.js';
@@ -120,16 +126,6 @@ const BANK_STYLE: Record<string, { label: string; fdr: (year: string, n: number)
 };
 const DESK_BANKS = ['SBIN', 'PUNB', 'BARB', 'CNRB', 'UBIN', 'UTIB'];
 const ALL_BANKS = Object.keys(BANK_STYLE);
-const BRANCHES = [
-  'Civil Lines',
-  'MG Road',
-  'Station Road',
-  'Main Branch',
-  'Industrial Area',
-  'University Campus',
-  'Cantonment',
-  'Market Yard',
-];
 
 export interface ScenarioSummary {
   instruments: number;
@@ -159,6 +155,8 @@ export async function seedScenarios(
     clock: app.get(ClockService),
     audit: app.get(AuditService),
     notifications: app.get(NotificationsService),
+    tax: app.get(TaxService),
+    forfeiture: app.get(ForfeitureService),
   };
   // Inboxes should show the last two months, not five years of history.
   svc.notifications.quietBefore = new Date(Date.parse(`${d(-60)}T00:00:00+05:30`));
@@ -221,13 +219,25 @@ export async function seedScenarios(
   ): InstrumentDeclaration => {
     serial++;
     const style = BANK_STYLE[o.bank]!;
+    const branch = pick(
+      rnd,
+      SEED_IFSC.filter((r) => r.bankCode === o.bank),
+    );
+    // Rates 6.50–7.50 % p.a.; the printed maturity value follows the bank's compounding.
+    const rate = 6.5 + Math.floor(rnd() * 5) * 0.25;
+    const compounding = SEED_BANKS.find((b) => b.code === o.bank)?.compounding ?? 'QUARTERLY';
+    const maturityValue = Math.round(
+      maturityValueFor(o.amount, rate, tenureYears(o.issue, o.maturity), compounding),
+    );
     return InstrumentDeclarationSchema.parse({
       type: 'FDR',
       bankCode: o.bank,
-      branch: pick(rnd, BRANCHES),
-      ifsc: `${o.bank}0${String(100000 + Math.floor(rnd() * 899999))}`,
+      branch: branch.branch,
+      ifsc: branch.ifsc,
       fdrNumber: style.fdr(o.issue.slice(0, 4), serial),
       amount: o.amount,
+      interestRate: rate,
+      maturityValue,
       issueDate: o.issue,
       maturityDate: o.maturity,
       depositorNames: ['AICTE', inst.trustName.replace(' (fictional)', '').toUpperCase()],
@@ -327,9 +337,12 @@ export async function seedScenarios(
     delays?: { scrutiny?: number; verify?: number; bank?: number };
   }
 
+  const activeRefs: { ref: Ref; inst: Inst; activeFrom: string }[] = [];
+
   /** Registers the steps that take one deposit from declaration to `stage`. */
   const deposit = (o: DepositOpts): Ref => {
     const ref: Ref = {};
+    if (o.stage === 'ACTIVE') activeRefs.push({ ref, inst: o.inst, activeFrom: d(20, o.created) });
     const inst = o.inst;
     const scrutinyAt = d(o.delays?.scrutiny ?? 2 + Math.floor(rnd() * 5), d(1, o.created));
     const verifyAt = d(o.delays?.verify ?? 1 + Math.floor(rnd() * 4), scrutinyAt);
@@ -417,6 +430,22 @@ export async function seedScenarios(
     until: 'REQUESTED' | 'RECOMMENDED' | 'APPROVED' | 'EXECUTED' | 'DECLINED' | 'REJECTED',
   ) => {
     let releaseId = '';
+    /** The approval gate needs a bank PASS from the last N days: re-attest first. */
+    const reattest = (when: string) => {
+      tl.add(when, inst.id, 'reattest', async () => {
+        await svc.bank.requestReattestation(
+          ref.id!,
+          'Re-verification before the release decision',
+          ro(inst),
+        );
+      });
+      tl.add(d(1, when), inst.id, 'bank re-attests', async () => {
+        const open = await prisma.bankConfirmationRequest.findFirst({
+          where: { instrumentId: ref.id!, status: { in: ['PENDING', 'FAILED'] } },
+        });
+        if (open) await bankAnswer(ref, inst, true);
+      });
+    };
     tl.add(at, inst.id, 'release request', async () => {
       const noc = await letterPdf(
         'No Objection Certificate',
@@ -432,6 +461,8 @@ export async function seedScenarios(
         )
       ).id;
     });
+    // Releases still in flight get a recent re-attestation, ready for the competent authority.
+    if ((until === 'REQUESTED' || until === 'RECOMMENDED') && d(-3) > d(4, at)) reattest(d(-3));
     if (until === 'REQUESTED') return;
     if (until === 'DECLINED') {
       tl.add(d(4, at), inst.id, 'release declined', async () => {
@@ -457,6 +488,7 @@ export async function seedScenarios(
       });
       return;
     }
+    reattest(d(5, at));
     tl.add(d(8, at), inst.id, 'release approve', async () => {
       await svc.releases.approve(authority, releaseId, 'Approved under delegated powers.');
     });
@@ -541,6 +573,12 @@ export async function seedScenarios(
     stage: 'DRAFT',
   });
   activeDeposit(demo2, 1240, { bank: 'HDFC' });
+  // TRINETRA scenario (b): SBI stops reporting interest on this one in FY 2025-26.
+  const prematureClosure = activeDeposit(demo2, 900, {
+    bank: 'SBIN',
+    created: d(-900),
+    decl: { fdrNumber: 'SBI/FD/2024/880088' },
+  });
   deposit({
     inst: demo2,
     bank: 'PUNB',
@@ -753,6 +791,7 @@ export async function seedScenarios(
   // Old (now exempt) institutions: deposits from their early years, released once they became
   // exempt (placeholder rule: 10+ years old). Some still hold one.
   const exemptAge = Number(rules['eligibility.exemption'].exemptIfAgeYearsAtLeast ?? 10);
+  const kept: { ref: Ref; inst: Inst }[] = [];
   old.forEach((i, k) => {
     const exemptFrom = `${i.yearEstablished + exemptAge}-01-20`;
     const deposits = k % 3 === 0 ? 2 : 1;
@@ -767,6 +806,7 @@ export async function seedScenarios(
         amount: 500_000,
         stage: 'ACTIVE',
       });
+      if ((k + n) % 4 === 3) kept.push({ ref, inst: i });
       const proposed = d(-420 + k * 9 + n * 30);
       const at = exemptFrom > proposed ? exemptFrom : proposed;
       if ((k + n) % 4 !== 3 && at <= d(-20))
@@ -776,7 +816,12 @@ export async function seedScenarios(
 
   // Fraud case: a second institution declares an FDR already held by another, with the same scan.
   const [victim, fraudster] = [young[3]!, young[young.length - 1]!];
-  const original = activeDeposit(victim, 900, { bank: 'SBIN', created: d(-400) });
+  // TRINETRA scenario (c): a recycled document. Distinctive number so the demo can search for it.
+  const original = activeDeposit(victim, 900, {
+    bank: 'SBIN',
+    created: d(-400),
+    decl: { fdrNumber: 'SBI/FD/2025/770077' },
+  });
   deposit({
     inst: fraudster,
     bank: 'SBIN',
@@ -791,6 +836,156 @@ export async function seedScenarios(
     },
     delays: { scrutiny: 1 },
   });
+
+  // TRINETRA scenario (a): an altered amount. The receipt reads ₹2,50,000 but its printed maturity
+  // value is what ₹25,00,000 would earn at 7 %: reverse maturity math gives it away.
+  const nrYoung = young.filter((i) => i.regionCode === 'NR' && i.index > 2);
+  {
+    const issue = d(-12);
+    const maturity = plusYears(issue, 5);
+    deposit({
+      inst: nrYoung[0]!,
+      bank: 'SBIN',
+      created: d(-8),
+      issue,
+      maturity,
+      amount: 250_000,
+      stage: 'SCRUTINY',
+      decl: {
+        fdrNumber: 'SBI/FD/2026/990250',
+        interestRate: 7,
+        maturityValue: Math.round(
+          maturityValueFor(2_500_000, 7, tenureYears(issue, maturity), 'QUARTERLY'),
+        ),
+      },
+      delays: { scrutiny: 2 },
+    });
+  }
+
+  // Forfeiture: one invoked last quarter (full maker-checker trail), one awaiting a decision.
+  if (kept[0]) {
+    const { ref, inst } = kept[0];
+    let fid = '';
+    tl.add(d(-120), inst.id, 'forfeiture propose', async () => {
+      fid = (
+        await svc.forfeiture.propose(ro(inst), ref.id!, {
+          reason: 'Approval withdrawn after inspection; the security deposit is to be invoked.',
+          orderReference: `AICTE/${inst.regionCode}/FF/${d(-125).slice(0, 4)}/0007`,
+        })
+      ).id;
+    });
+    tl.add(d(-119), inst.id, 'reattest', async () => {
+      await svc.bank.requestReattestation(
+        ref.id!,
+        'Re-verification before the forfeiture decision',
+        ro(inst),
+      );
+    });
+    tl.add(d(-118), inst.id, 'bank re-attests', async () => {
+      const open = await prisma.bankConfirmationRequest.findFirst({
+        where: { instrumentId: ref.id!, status: { in: ['PENDING', 'FAILED'] } },
+      });
+      if (open) await bankAnswer(ref, inst, true);
+    });
+    tl.add(d(-115), inst.id, 'forfeiture approve', async () => {
+      await svc.forfeiture.approve(authority, fid, 'Approved; order upheld after hearing.');
+    });
+    tl.add(d(-110), inst.id, 'forfeiture execute', async () => {
+      await svc.forfeiture.execute(finance, fid, {
+        executionRef: `FIN/INV/${d(-110).slice(0, 4)}/0003`,
+        executionDate: d(-110),
+      });
+    });
+  }
+  if (kept[1]) {
+    const { ref, inst } = kept[1];
+    tl.add(d(-4), inst.id, 'forfeiture propose', async () => {
+      await svc.forfeiture.propose(bureau, ref.id!, {
+        reason: 'Institution failed to replace a matured deposit despite notices.',
+        orderReference: `AICTE/RB/FF/${T.slice(0, 4)}/0011`,
+      });
+    });
+  }
+
+  // Annual bank re-attestation of deposits active for more than a year (so most bank eyes are
+  // fresh); three are left stale on purpose so the nightly job's scheduled re-attestation shows up.
+  activeRefs.forEach(({ ref, inst, activeFrom }, k) => {
+    if (k < 3 || activeFrom > d(-400)) return;
+    const when = d(-60 - ((k * 37) % 240));
+    tl.add(when, inst.id, 'annual re-attestation', async () => {
+      const cur = await prisma.instrument.findUniqueOrThrow({
+        where: { id: ref.id! },
+        select: { status: true },
+      });
+      if (cur.status !== 'ACTIVE') return;
+      await svc.bank.requestReattestation(ref.id!, 'Annual re-attestation', null);
+    });
+    tl.add(d(2, when), inst.id, 'bank re-attests', async () => {
+      const open = await prisma.bankConfirmationRequest.findFirst({
+        where: { instrumentId: ref.id!, status: { in: ['PENDING', 'FAILED'] } },
+      });
+      if (open) await bankAnswer(ref, inst, true);
+    });
+  });
+
+  // TRINETRA tax eye: institutions upload their AIS for the last two financial years. Bank-reported
+  // interest is generated from the deposits' own terms (fictional); for scenario (b) SBI stops
+  // reporting on the demo institution's deposit in FY 2025-26.
+  const uploadAis = (fy: string, when: string) =>
+    tl.add(when, BARRIER, `AIS ${fy}`, async () => {
+      const { start, endExclusive } = {
+        start: `${fy.slice(0, 4)}-04-01`,
+        endExclusive: `${Number(fy.slice(0, 4)) + 1}-04-01`,
+      };
+      const held = await prisma.instrument.findMany({
+        where: {
+          status: { in: [...HELD_STATES] },
+          interestRate: { not: null },
+          issueDate: { lt: new Date(`${endExclusive}T00:00:00Z`) },
+          maturityDate: { gt: new Date(`${start}T00:00:00Z`) },
+        },
+        include: { bank: { select: { name: true, compounding: true } } },
+      });
+      const byInst = new Map<string, Map<string, number>>();
+      for (const h of held) {
+        if (!h.bank || !h.amount || !h.issueDate || !h.maturityDate) continue;
+        if (fy === '2025-26' && h.id === prematureClosure.id) continue;
+        const e = expectedInterestForFy({
+          principal: Number(h.amount),
+          ratePct: Number(h.interestRate),
+          issueDate: h.issueDate.toISOString().slice(0, 10),
+          maturityDate: h.maturityDate.toISOString().slice(0, 10),
+          compounding: h.bank.compounding ?? 'QUARTERLY',
+          fy,
+        });
+        const m = byInst.get(h.institutionId) ?? new Map<string, number>();
+        m.set(h.bank.name.toUpperCase(), (m.get(h.bank.name.toUpperCase()) ?? 0) + e * 1.01);
+        byInst.set(h.institutionId, m);
+      }
+      for (const [institutionId, banks] of byInst) {
+        const user = instUser.get(institutionId);
+        if (!user) continue;
+        const json = {
+          _note: 'FICTIONAL AIS generated by the demo seed (assumed layout)',
+          assessee: { pan: 'AAATD0000D', name: 'FICTIONAL TRUST' },
+          financialYear: fy,
+          informationCategories: [
+            {
+              category: 'Interest from deposit',
+              infoCode: 'SFT-016(TD)',
+              entries: [...banks].map(([reportedBy, amount]) => ({
+                reportedBy,
+                amount: Math.round(amount * 100) / 100,
+              })),
+            },
+          ],
+        };
+        const buffer = Buffer.from(JSON.stringify(json));
+        await svc.tax.upload(user, { buffer, originalname: `ais-${fy}.json`, size: buffer.length });
+      }
+    });
+  uploadAis('2024-25', '2025-07-10');
+  uploadAis('2025-26', '2026-07-10');
 
   // Legacy digitisation (Northern Region): a batch of scans, some confirmed, some awaiting review,
   // one rejected, plus entries copied from the old paper register with no scan on file.

@@ -13,6 +13,7 @@ import { AssertionsService } from './assertions.service.js';
 import { InstrumentsController } from './instruments.controller.js';
 import { InstrumentsService } from './instruments.service.js';
 import { TransitionsService } from './transitions.service.js';
+import { TrinetraService } from './trinetra.service.js';
 
 @Module({
   imports: [JwtModule.register({})],
@@ -21,6 +22,7 @@ import { TransitionsService } from './transitions.service.js';
     InstrumentsService,
     AssertionsService,
     TransitionsService,
+    TrinetraService,
     DocumentsService,
     DiscrepancyEngine,
     OcrClient,
@@ -46,6 +48,7 @@ import { TransitionsService } from './transitions.service.js';
     InstrumentsService,
     AssertionsService,
     TransitionsService,
+    TrinetraService,
     DocumentsService,
     DiscrepancyEngine,
     OcrClient,

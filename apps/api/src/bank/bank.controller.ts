@@ -33,6 +33,15 @@ const RespondSchema = z.intersection(
 type RespondBody = z.infer<typeof RespondSchema>;
 const MAX_BYTES = getConfig().DOCUMENT_MAX_MB * 1024 * 1024;
 
+const ReattestSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3)
+    .max(500)
+    .default('Re-attestation requested by the regional officer'),
+});
+
 @ApiTags('bank')
 @Controller()
 export class BankController {
@@ -44,6 +53,19 @@ export class BankController {
   @HttpCode(200)
   sendToBank(@CurrentUser() u: Principal, @Param('id', ParseUUIDPipe) id: string) {
     return this.bank.sendToBank(u, id);
+  }
+
+  /** Officer asks the bank to re-confirm a held deposit (TRINETRA bank eye). */
+  @RequirePermission('bank:request')
+  @Post('instruments/:id/reattest')
+  @HttpCode(200)
+  @ApiZodBody(ReattestSchema)
+  reattest(
+    @CurrentUser() u: Principal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(ReattestSchema)) body: z.infer<typeof ReattestSchema>,
+  ) {
+    return this.bank.reattestByOfficer(u, id, body.reason);
   }
 
   @RequirePermission('bank:request')

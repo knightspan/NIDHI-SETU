@@ -12,3 +12,4 @@ export * from './schemas/bank.js';
 export * from './schemas/release.js';
 export * from './schemas/oversight.js';
 export * from './schemas/ocr.js';
+export * from './schemas/verification.js';

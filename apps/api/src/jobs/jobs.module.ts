@@ -1,3 +1,6 @@
+import { BankModule } from '../bank/bank.module.js';
+import { InstrumentsModule } from '../instruments/instruments.module.js';
+import { TaxModule } from '../tax/tax.module.js';
 import { InjectQueue, BullModule, Processor, WorkerHost } from '@nestjs/bullmq';
 import {
   Injectable,
@@ -84,6 +87,7 @@ export class JobsModule {
     const cfg = getConfig();
     const base = {
       module: JobsModule,
+      imports: [InstrumentsModule, BankModule, TaxModule],
       controllers: [JobsAdminController, EscalationsController],
       providers: [LifecycleService, DigestService],
       exports: [LifecycleService, DigestService],
@@ -92,6 +96,7 @@ export class JobsModule {
     return {
       ...base,
       imports: [
+        ...base.imports,
         BullModule.forRoot({ connection: redisConnection(cfg.REDIS_URL) }),
         BullModule.registerQueue({ name: MAINTENANCE_QUEUE }),
       ],

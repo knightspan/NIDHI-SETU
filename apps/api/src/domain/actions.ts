@@ -1,4 +1,10 @@
-import { isPreActive, isTerminal, type LifecycleStatus, type Role } from '@nidhisetu/shared';
+import {
+  isHeld,
+  isPreActive,
+  isTerminal,
+  type LifecycleStatus,
+  type Role,
+} from '@nidhisetu/shared';
 
 export const INSTRUMENT_ACTIONS = [
   'edit',
@@ -19,6 +25,11 @@ export const INSTRUMENT_ACTIONS = [
   'approve_release',
   'reject_release',
   'execute_release',
+  'reattest',
+  'propose_forfeiture',
+  'approve_forfeiture',
+  'reject_forfeiture',
+  'execute_forfeiture',
 ] as const;
 export type InstrumentAction = (typeof INSTRUMENT_ACTIONS)[number];
 
@@ -30,6 +41,12 @@ export interface ActionContext {
   hasReplacement: boolean;
   /** Pending release request, if any. */
   release?: { requestedById: string; recommendedById: string | null } | null;
+  /** Pending forfeiture proposal, if any. */
+  forfeiture?: { proposedById: string } | null;
+  /** A tax-heartbeat FAIL not yet followed by a bank re-attestation (locks release / renewal). */
+  taxLocked?: boolean;
+  /** A bank confirmation request is already open. */
+  hasOpenBankRequest?: boolean;
 }
 
 /**
@@ -49,7 +66,7 @@ export function allowedActions(
       add(s === 'DRAFT', 'edit', 'delete', 'submit');
       add(s === 'DISCREPANCY_RAISED', 'edit', 'respond');
       add(!isTerminal(s), 'upload');
-      add(s === 'ACTIVE' && !ctx.hasReplacement, 'renew', 'request_release');
+      add(s === 'ACTIVE' && !ctx.hasReplacement && !ctx.taxLocked, 'renew', 'request_release');
       break;
     case 'RO_OFFICER':
       add(!isTerminal(s) && s !== 'DRAFT', 'upload');
@@ -63,9 +80,12 @@ export function allowedActions(
       add(s === 'OFFICER_VERIFIED', 'send_to_bank');
       add(isPreActive(s) && s !== 'DRAFT', 'reject');
       add(s === 'RELEASE_REQUESTED', 'recommend_release', 'decline_release');
+      add(isHeld(s) && !ctx.hasOpenBankRequest, 'reattest');
+      add(s === 'ACTIVE', 'propose_forfeiture');
       break;
     case 'BUREAU_OFFICER':
       add(s === 'RELEASE_REQUESTED', 'recommend_release', 'decline_release');
+      add(s === 'ACTIVE', 'propose_forfeiture');
       break;
     case 'COMPETENT_AUTHORITY':
       // Maker-checker: whoever recommended cannot approve.
@@ -74,9 +94,16 @@ export function allowedActions(
         'approve_release',
         'reject_release',
       );
+      // Same separation of duties for forfeiture.
+      add(
+        s === 'FORFEITURE_PROPOSED' && ctx.forfeiture?.proposedById !== user.id,
+        'approve_forfeiture',
+        'reject_forfeiture',
+      );
       break;
     case 'FINANCE_OFFICER':
       add(s === 'RELEASE_APPROVED', 'execute_release');
+      add(s === 'FORFEITURE_APPROVED', 'execute_forfeiture');
       break;
     case 'BANK_OFFICER':
     case 'AUDITOR':

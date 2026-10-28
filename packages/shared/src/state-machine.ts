@@ -8,6 +8,11 @@ export interface TransitionDef {
   to: LifecycleStatus;
   action: TransitionAction;
   actors: readonly TransitionActor[];
+  /**
+   * A condition the API evaluates server-side before the move (addendum §3). REVERIFICATION: a
+   * fresh bank PASS, no open HIGH discrepancy and the latest tax heartbeat not FAIL.
+   */
+  gate?: 'REVERIFICATION';
 }
 
 export const TRANSITION_ACTIONS = [
@@ -30,6 +35,10 @@ export const TRANSITION_ACTIONS = [
   'reject_release',
   'reinstate',
   'execute_release',
+  'propose_forfeiture',
+  'approve_forfeiture',
+  'reject_forfeiture',
+  'execute_forfeiture',
   'reject',
 ] as const;
 export type TransitionAction = (typeof TRANSITION_ACTIONS)[number];
@@ -49,6 +58,7 @@ export const PRE_ACTIVE_STATES = [
 export const TERMINAL_STATES = [
   'RENEWED',
   'RELEASED',
+  'FORFEITED',
   'REJECTED',
 ] as const satisfies readonly LifecycleStatus[];
 
@@ -59,6 +69,8 @@ export const HELD_STATES = [
   'RELEASE_REQUESTED',
   'RELEASE_RECOMMENDED',
   'RELEASE_APPROVED',
+  'FORFEITURE_PROPOSED',
+  'FORFEITURE_APPROVED',
 ] as const satisfies readonly LifecycleStatus[];
 
 const OFFICERS = ['RO_OFFICER'] as const;
@@ -137,6 +149,7 @@ export const TRANSITIONS: readonly TransitionDef[] = [
     to: 'RELEASE_APPROVED',
     action: 'approve_release',
     actors: ['COMPETENT_AUTHORITY'],
+    gate: 'REVERIFICATION',
   },
   {
     from: 'RELEASE_RECOMMENDED',
@@ -149,6 +162,33 @@ export const TRANSITIONS: readonly TransitionDef[] = [
     from: 'RELEASE_APPROVED',
     to: 'RELEASED',
     action: 'execute_release',
+    actors: ['FINANCE_OFFICER'],
+  },
+  // Forfeiture (invocation of the deposit): proposed by an officer (maker), approved by the
+  // competent authority (checker) after fresh re-verification, executed by finance.
+  {
+    from: 'ACTIVE',
+    to: 'FORFEITURE_PROPOSED',
+    action: 'propose_forfeiture',
+    actors: ['RO_OFFICER', 'BUREAU_OFFICER'],
+  },
+  {
+    from: 'FORFEITURE_PROPOSED',
+    to: 'FORFEITURE_APPROVED',
+    action: 'approve_forfeiture',
+    actors: ['COMPETENT_AUTHORITY'],
+    gate: 'REVERIFICATION',
+  },
+  {
+    from: 'FORFEITURE_PROPOSED',
+    to: 'ACTIVE',
+    action: 'reject_forfeiture',
+    actors: ['COMPETENT_AUTHORITY'],
+  },
+  {
+    from: 'FORFEITURE_APPROVED',
+    to: 'FORFEITED',
+    action: 'execute_forfeiture',
     actors: ['FINANCE_OFFICER'],
   },
   ...PRE_ACTIVE_STATES.filter((s) => s !== 'DRAFT').map((from): TransitionDef => ({

@@ -2,23 +2,28 @@ import { Injectable } from '@nestjs/common';
 import {
   AICTE_BENEFICIARY,
   normalizeFieldValue,
+  type AssertedField,
   type FieldKey,
   type TrustLevel,
 } from '@nidhisetu/shared';
+import { AuditService } from '../audit/audit.service.js';
 import type { Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
 import { dateOnly } from '../domain/dates.js';
 import {
+  computeFieldState,
   computeFieldStates,
   mismatchedFields,
-  trustScore,
   type FieldState,
 } from '../domain/trust.js';
 import { fdrKey } from '../domain/fdr-key.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
+/** People who type values (bank answers and OCR are not manual effort). */
+const MANUAL_ROLES = new Set(['INSTITUTION_USER', 'RO_OFFICER']);
+
 export interface AssertionInput {
-  field: FieldKey;
+  field: AssertedField;
   value: unknown;
   trust: TrustLevel;
   source: string;
@@ -32,7 +37,10 @@ export interface AssertionInput {
  */
 @Injectable()
 export class AssertionsService {
-  constructor(private readonly clock: ClockService) {}
+  constructor(
+    private readonly clock: ClockService,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Inserts assertions. A new assertion is skipped when the latest assertion for that field at the
@@ -66,6 +74,25 @@ export class AssertionsService {
       });
     }
     if (rows.length) await tx.fieldAssertion.createMany({ data: rows });
+    // Manual effort metric: a person typing over a value that was already on record.
+    if (actor.role && MANUAL_ROLES.has(actor.role)) {
+      const edited = rows.filter((r) => {
+        const prior = computeFieldState(r.field as AssertedField, existing).effectiveValue;
+        return prior !== null && prior !== r.value;
+      });
+      if (edited.length) {
+        await this.audit.record(
+          edited.map((r) => ({
+            actor,
+            action: 'field.edited',
+            entityType: 'Instrument',
+            entityId: instrumentId,
+            data: { field: r.field, trust: r.trust, source: r.source },
+          })),
+          tx,
+        );
+      }
+    }
     const states = await this.refresh(tx, instrumentId);
     return { states, added: rows.length };
   }
@@ -97,12 +124,17 @@ export class AssertionsService {
         jointName: !!names && names.split(';').some((n) => n.trim() === AICTE_BENEFICIARY),
         lienMarked: v('lienMarked') === 'true',
         autoRenewal: v('autoRenewal') === 'true',
-        trustScore: trustScore(states),
+        interestRate: num(computeFieldState('interestRate', all).effectiveValue),
+        maturityValue: num(computeFieldState('maturityValue', all).effectiveValue),
         mismatchCount: mismatchedFields(states).length,
       },
     });
     return states;
   }
+}
+
+function num(v: string | null): string | null {
+  return v && Number.isFinite(Number(v)) ? v : null;
 }
 
 function validDate(iso: string | null): Date | null {

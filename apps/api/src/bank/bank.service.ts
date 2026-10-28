@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   BANK_DENIAL_CODE,
+  TAX_TRAIL_CODE,
   type BankRequestListQuery,
   type BankRequestView,
   type BankResponse,
@@ -21,6 +22,7 @@ import type { Bank, BankConfirmationRequest, Prisma } from '../generated/prisma/
 import { AssertionsService } from '../instruments/assertions.service.js';
 import { InstrumentsService } from '../instruments/instruments.service.js';
 import { TransitionsService } from '../instruments/transitions.service.js';
+import { TrinetraService } from '../instruments/trinetra.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RulesService } from '../rules/rules.service.js';
@@ -50,6 +52,7 @@ export class BankService {
     private readonly rules: RulesService,
     private readonly notifications: NotificationsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly trinetra: TrinetraService,
   ) {
     this.mockApi = new MockBankApiAdapter({
       latencyMs: config.MOCK_BANK_API_LATENCY_MS,
@@ -84,19 +87,7 @@ export class BankService {
     });
     const sla = await this.rules.get('escalation.sla');
     const now = this.clock.now();
-    const snapshot: BankSnapshot = {
-      refNo: inst.refNo,
-      institutionName: institution.name,
-      fdrNumber: inst.fdrNumber,
-      ifsc: inst.ifsc,
-      branch: inst.branch,
-      amount: inst.amount?.toFixed(2) ?? null,
-      issueDate: inst.issueDate ? toIso(inst.issueDate) : null,
-      maturityDate: inst.maturityDate ? toIso(inst.maturityDate) : null,
-      depositorNames: inst.depositorNames,
-      lienMarked: inst.lienMarked,
-      autoRenewal: inst.autoRenewal,
-    };
+    const snapshot = snapshotOf(inst, institution.name);
     const actor = actorOf(p);
     const req = await this.prisma.$transaction(async (tx) => {
       const r = await tx.bankConfirmationRequest.create({
@@ -373,6 +364,27 @@ export class BankService {
       tx,
     );
 
+    // TRINETRA bank eye.
+    await this.trinetra.recordBank(
+      tx,
+      inst.id,
+      outcome.outcome === 'CONFIRMED',
+      {
+        requestId,
+        purpose: req.purpose,
+        source,
+        reference: response.reference,
+        contradictions: outcome.contradictions,
+      },
+      letterDocumentId,
+      actor,
+    );
+
+    if (req.purpose === 'REATTESTATION') {
+      await this.afterReattestation(tx, req.id, inst, outcome, response, actor, now);
+      return;
+    }
+
     const transitionActor: Actor = actor.role === 'BANK_OFFICER' ? actor : SYSTEM_ACTOR;
     if (outcome.outcome === 'CONFIRMED') {
       const confirmed = await this.transitions.transition(
@@ -415,7 +427,204 @@ export class BankService {
     }
   }
 
+  /** A re-attestation answer never moves the lifecycle; it clears or raises the alarm. */
+  private async afterReattestation(
+    tx: Prisma.TransactionClient,
+    requestId: string,
+    inst: { id: string; refNo: string },
+    outcome: { outcome: 'CONFIRMED' | 'DENIED'; contradictions: string[] },
+    response: BankResponse,
+    actor: Actor,
+    now: Date,
+  ): Promise<void> {
+    if (outcome.outcome === 'CONFIRMED') {
+      // The bank re-attested: the tax-heartbeat alarm is answered.
+      const tax = await tx.discrepancy.findMany({
+        where: {
+          instrumentId: inst.id,
+          ruleCode: TAX_TRAIL_CODE,
+          status: { in: ['OPEN', 'RESPONDED'] },
+        },
+      });
+      for (const d of tax) {
+        await tx.discrepancy.update({
+          where: { id: d.id },
+          data: { status: 'RESOLVED', resolvedAt: now, resolvedById: null },
+        });
+        await this.audit.record(
+          {
+            actor,
+            action: 'discrepancy.auto_resolved',
+            entityType: 'Discrepancy',
+            entityId: d.id,
+            data: { instrumentId: inst.id, reason: 'bank re-attested', bankRequestId: requestId },
+          },
+          tx,
+        );
+      }
+      await this.trinetra.rescore(tx, inst.id);
+      await this.notifications.notifyInstrument(tx, inst.id, ['RO_OFFICER'], {
+        kind: 'BANK',
+        title: `Bank re-attested ${inst.refNo}`,
+        body: 'The bank confirmed the deposit still exists with lien in favour of AICTE.',
+      });
+      return;
+    }
+    const sla = (await this.rules.current(now, tx))['escalation.sla'];
+    await tx.discrepancy.create({
+      data: {
+        instrumentId: inst.id,
+        ruleCode: BANK_DENIAL_CODE,
+        severity: 'HIGH',
+        description: `Bank did not re-attest: ${outcome.contradictions.join('; ')}${response.remarks ? ` (bank remarks: ${response.remarks})` : ''}`,
+        raisedById: actor.id,
+        dueAt: new Date(now.getTime() + sla.discrepancyResponseDays * DAY_MS),
+        createdAt: now,
+      },
+    });
+    await this.trinetra.rescore(tx, inst.id);
+    await this.notifications.notifyInstrument(
+      tx,
+      inst.id,
+      ['RO_OFFICER', 'INSTITUTION_USER', 'BUREAU_OFFICER'],
+      {
+        kind: 'BANK',
+        title: `Bank did not re-attest ${inst.refNo}`,
+        body: outcome.contradictions.join('; '),
+        sms: true,
+      },
+    );
+  }
+
   private async view(r: RequestRow): Promise<BankRequestView> {
     return (await toBankRequestViews(this.prisma, [r]))[0]!;
   }
+
+  /**
+   * Re-attestation (TRINETRA bank eye): asks the bank to confirm an ACTIVE deposit again without
+   * changing its lifecycle state. Used by officers, the daily stale-signal job and a tax FAIL.
+   * Returns the new request id, or null when one is already open or the bank is unknown.
+   */
+  async createReattestation(
+    tx: Prisma.TransactionClient,
+    instrumentId: string,
+    reason: string,
+    by: Principal | null,
+  ): Promise<string | null> {
+    const inst = await tx.instrument.findUniqueOrThrow({
+      where: { id: instrumentId },
+      include: { institution: { select: { name: true } }, bank: true },
+    });
+    if (!inst.bank) return null;
+    const open = await tx.bankConfirmationRequest.count({
+      where: { instrumentId, status: { in: ['PENDING', 'FAILED'] } },
+    });
+    if (open) return null;
+    const adapter = this.adapterFor(inst.bank);
+    const now = this.clock.now();
+    const sla = (await this.rules.current(now, tx))['escalation.sla'];
+    const r = await tx.bankConfirmationRequest.create({
+      data: {
+        instrumentId,
+        bankId: inst.bank.id,
+        channel: adapter.channel,
+        purpose: 'REATTESTATION',
+        reason,
+        requestedFields: ['exists', 'lienMarked', 'maturityDate', 'autoRenewal', 'amount'],
+        snapshot: { ...snapshotOf(inst, inst.institution.name) },
+        requestedById: by?.id ?? null,
+        slaDueAt: new Date(now.getTime() + sla.bankConfirmationDays * DAY_MS),
+        createdAt: now,
+      },
+    });
+    await this.audit.record(
+      {
+        actor: by ? actorOf(by) : SYSTEM_ACTOR,
+        action: 'bank.reattestation_requested',
+        entityType: 'BankConfirmationRequest',
+        entityId: r.id,
+        data: { instrumentId, bank: inst.bank.code, reason },
+      },
+      tx,
+    );
+    if (adapter.channel === 'DESK') {
+      await this.notifications.notifyInstrument(tx, instrumentId, ['BANK_OFFICER'], {
+        kind: 'BANK',
+        title: `AICTE asks you to re-confirm FDR ${inst.fdrNumber ?? ''}`,
+        body: `${reason}. Please confirm the deposit still exists with lien in favour of AICTE (${inst.institution.name}) by ${toIso(r.slaDueAt)}.`,
+        link: `/bank-desk/${r.id}`,
+      });
+    }
+    return r.id;
+  }
+
+  /** Creates a re-attestation request and, for API banks, sends it at once. */
+  async requestReattestation(
+    instrumentId: string,
+    reason: string,
+    by: Principal | null,
+  ): Promise<string | null> {
+    const id = await this.prisma.$transaction((tx) =>
+      this.createReattestation(tx, instrumentId, reason, by),
+    );
+    if (id) await this.dispatchIfApi(id);
+    return id;
+  }
+
+  async dispatchIfApi(requestId: string): Promise<void> {
+    const r = await this.prisma.bankConfirmationRequest.findUnique({ where: { id: requestId } });
+    if (r?.channel === 'MOCK_API') await this.dispatch(requestId);
+  }
+
+  /** Officer action: ask the bank to re-confirm a held deposit. */
+  async reattestByOfficer(
+    p: Principal,
+    instrumentId: string,
+    reason: string,
+  ): Promise<BankRequestView> {
+    const inst = await this.instruments.getScoped(p, instrumentId);
+    await this.instruments.assertAction(p, inst, 'reattest');
+    const id = await this.requestReattestation(instrumentId, reason, p);
+    if (!id) {
+      throw new ConflictError(
+        'A bank request is already open for this instrument, or its bank is unknown',
+      );
+    }
+    return this.view(
+      await this.prisma.bankConfirmationRequest.findUniqueOrThrow({
+        where: { id },
+        include: REQUEST_INCLUDE,
+      }),
+    );
+  }
+}
+
+function snapshotOf(
+  inst: {
+    refNo: string;
+    fdrNumber: string | null;
+    ifsc: string | null;
+    branch: string | null;
+    amount: Prisma.Decimal | null;
+    issueDate: Date | null;
+    maturityDate: Date | null;
+    depositorNames: string | null;
+    lienMarked: boolean;
+    autoRenewal: boolean;
+  },
+  institutionName: string,
+): BankSnapshot {
+  return {
+    refNo: inst.refNo,
+    institutionName,
+    fdrNumber: inst.fdrNumber,
+    ifsc: inst.ifsc,
+    branch: inst.branch,
+    amount: inst.amount?.toFixed(2) ?? null,
+    issueDate: inst.issueDate ? toIso(inst.issueDate) : null,
+    maturityDate: inst.maturityDate ? toIso(inst.maturityDate) : null,
+    depositorNames: inst.depositorNames,
+    lienMarked: inst.lienMarked,
+    autoRenewal: inst.autoRenewal,
+  };
 }

@@ -54,6 +54,10 @@ export const PERMISSIONS = {
   'release:recommend': ['RO_OFFICER', 'BUREAU_OFFICER'],
   'release:approve': ['COMPETENT_AUTHORITY'],
   'release:execute': ['FINANCE_OFFICER'],
+  'forfeiture:propose': ['RO_OFFICER', 'BUREAU_OFFICER'],
+  'forfeiture:approve': ['COMPETENT_AUTHORITY'],
+  'forfeiture:execute': ['FINANCE_OFFICER'],
+  'tax:upload': ['INSTITUTION_USER'],
   // Oversight
   'dashboard:read': [
     'INSTITUTION_USER',

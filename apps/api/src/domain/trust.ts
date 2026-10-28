@@ -1,4 +1,10 @@
-import { FIELD_KEYS, TRUST_LEVELS, type FieldKey, type TrustLevel } from '@nidhisetu/shared';
+import {
+  FIELD_KEYS,
+  TRUST_LEVELS,
+  type AssertedField,
+  type FieldKey,
+  type TrustLevel,
+} from '@nidhisetu/shared';
 
 /** Minimal view of a FieldAssertion row. */
 export interface AssertionLike {
@@ -14,7 +20,7 @@ export interface AssertionLike {
 }
 
 export interface FieldState {
-  field: FieldKey;
+  field: AssertedField;
   /** Value of the latest assertion at the highest trust level present. */
   effectiveValue: string | null;
   effectiveTrust: TrustLevel | null;
@@ -50,7 +56,7 @@ export const BANK_CONFIRMABLE_FIELDS: readonly FieldKey[] = [
 ];
 
 export function computeFieldState(
-  field: FieldKey,
+  field: AssertedField,
   assertions: readonly AssertionLike[],
 ): FieldState {
   const latestByTrust: Partial<Record<TrustLevel, AssertionLike>> = {};

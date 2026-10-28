@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HELD_STATES, type Role, type ValidityStatus } from '@nidhisetu/shared';
 import { AuditService } from '../audit/audit.service.js';
+import { BankService } from '../bank/bank.service.js';
+import { needsReattestation } from '../domain/signals.js';
+import { TrinetraService } from '../instruments/trinetra.service.js';
+import { TaxService } from '../tax/tax.service.js';
 import { SYSTEM_ACTOR, type Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
 import { DAY_MS, addDays, toIso } from '../domain/dates.js';
@@ -31,6 +35,12 @@ export interface LifecycleSummary {
   escalationsCreated: number;
   escalationsResolved: number;
   escalationNotifications: number;
+  /** TRINETRA: scheduled re-attestations requested for stale bank signals. */
+  reattestationsRequested: number;
+  /** TRINETRA: AIS requests issued this run (yearly). */
+  aisRequested: number;
+  /** Instruments whose trust / risk changed in the nightly rescore. */
+  rescored: number;
   /** Signed checkpoint of the audit chain taken at the end of the run. */
   auditAnchor?: { id: number; seq: string; hash: string } | null;
   durationMs: number;
@@ -61,6 +71,9 @@ export class LifecycleService {
     private readonly rules: RulesService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly trinetra: TrinetraService,
+    private readonly bank: BankService,
+    private readonly tax: TaxService,
   ) {}
 
   /** Runs the job; concurrent callers share the same run. */
@@ -181,7 +194,19 @@ export class LifecycleService {
       reminderMessages,
     );
 
-    // ── 3. Escalations ───────────────────────────────────────────────────────
+    // ── 3. TRINETRA ──────────────────────────────────────────────────────────
+    const reattestationsRequested = await this.reattestStale(
+      now,
+      rules['verification.signals'].reattestationDailyCap,
+    );
+    const ais = await this.tax.requestAis(actor);
+    const scored = await this.prisma.instrument.findMany({
+      where: { status: { notIn: ['DRAFT', 'REJECTED', 'RENEWED', 'RELEASED', 'FORFEITED'] } },
+      select: { id: true },
+    });
+    const rescored = await this.trinetra.rescoreMany(scored.map((i) => i.id));
+
+    // ── 4. Escalations ───────────────────────────────────────────────────────
     const esc = await this.escalate(
       today,
       now,
@@ -200,6 +225,9 @@ export class LifecycleService {
       escalationsCreated: esc.created,
       escalationsResolved: esc.resolved,
       escalationNotifications: esc.notified,
+      reattestationsRequested,
+      aisRequested: ais.requested,
+      rescored,
       durationMs: Date.now() - started,
       finishedAt: new Date().toISOString(),
     };
@@ -243,6 +271,69 @@ export class LifecycleService {
         `${remindersCreated} reminders, ${esc.created} escalations in ${summary.durationMs} ms`,
     );
     return summary;
+  }
+
+  /**
+   * Scheduled re-attestation (TRINETRA bank eye): every ACTIVE deposit whose bank confirmation has
+   * gone STALE gets a fresh bank request (up to the daily cap). Uses the demo clock, so moving it
+   * forward a year makes confirmations stale.
+   */
+  private async reattestStale(now: Date, cap: number): Promise<number> {
+    const active = await this.prisma.instrument.findMany({
+      where: { status: 'ACTIVE', bankId: { not: null } },
+      select: { id: true, status: true },
+    });
+    if (!active.length) return 0;
+    const ids = active.map((a) => a.id);
+    const [bankSignals, openReqs] = await Promise.all([
+      this.prisma.verificationSignal.findMany({
+        where: { instrumentId: { in: ids }, eye: 'BANK' },
+        orderBy: { checkedAt: 'desc' },
+        select: { instrumentId: true, result: true, checkedAt: true, validUntil: true },
+      }),
+      this.prisma.bankConfirmationRequest.findMany({
+        where: { instrumentId: { in: ids }, status: { in: ['PENDING', 'FAILED'] } },
+        select: { instrumentId: true },
+      }),
+    ]);
+    const latest = new Map<string, (typeof bankSignals)[number]>();
+    for (const s of bankSignals) if (!latest.has(s.instrumentId)) latest.set(s.instrumentId, s);
+    const open = new Set(openReqs.map((r) => r.instrumentId));
+    const due = active.filter((a) =>
+      needsReattestation({
+        status: a.status,
+        latestBank: latest.get(a.id) ?? null,
+        hasOpenBankRequest: open.has(a.id),
+        now,
+      }),
+    );
+    const created: string[] = [];
+    for (const a of due.slice(0, cap)) {
+      const id = await this.prisma.$transaction(async (tx) => {
+        const last = latest.get(a.id);
+        // Record that the bank eye went stale (once), then ask the bank again.
+        if (last?.result === 'PASS') {
+          await this.trinetra.record(tx, {
+            instrumentId: a.id,
+            eye: 'BANK',
+            result: 'STALE',
+            details: {
+              note: 'Bank confirmation older than the configured validity',
+              previousCheckedAt: last.checkedAt.toISOString(),
+            },
+          });
+        }
+        return this.bank.createReattestation(
+          tx,
+          a.id,
+          'Scheduled re-attestation: bank confirmation is stale',
+          null,
+        );
+      });
+      if (id) created.push(id);
+    }
+    for (const id of created) await this.bank.dispatchIfApi(id);
+    return created.length;
   }
 
   /** Builds a fast lookup of in-scope recipients for many instruments at once. */
@@ -368,6 +459,57 @@ export class LifecycleService {
       }),
     );
 
+    const aisOverdue = await this.prisma.aisRequest.findMany({
+      where: { fulfilledAt: null },
+      select: {
+        id: true,
+        fy: true,
+        requestedAt: true,
+        institution: {
+          select: {
+            name: true,
+            instruments: {
+              where: { status: { in: [...HELD_STATES] } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    aisOverdue.forEach((a) => {
+      const instrumentId = a.institution.instruments[0]?.id;
+      if (!instrumentId) return;
+      items.push({
+        type: 'AIS_UPLOAD',
+        entityId: a.id,
+        instrumentId,
+        since: a.requestedAt,
+        label: `${a.institution.name} has not uploaded its AIS for FY ${a.fy}`,
+      });
+    });
+
+    const forfeitures = await this.prisma.forfeitureRequest.findMany({
+      where: { status: { in: ['PROPOSED', 'APPROVED'] } },
+      select: {
+        id: true,
+        instrumentId: true,
+        status: true,
+        proposedAt: true,
+        decidedAt: true,
+        instrument: { select: { refNo: true } },
+      },
+    });
+    forfeitures.forEach((f) =>
+      items.push({
+        type: 'FORFEITURE',
+        entityId: f.id,
+        instrumentId: f.instrumentId,
+        since: f.status === 'PROPOSED' ? f.proposedAt : (f.decidedAt ?? f.proposedAt),
+        label: `Forfeiture of ${f.instrument.refNo} awaiting ${f.status === 'PROPOSED' ? 'decision' : 'execution'}`,
+      }),
+    );
+
     const existingRows = await this.prisma.escalation.findMany({
       where: { entityId: { in: items.map((i) => i.entityId) } },
       select: { entityType: true, entityId: true, level: true },
@@ -435,5 +577,7 @@ function labelOf(t: EscalationType): string {
     BANK_REQUEST: 'bank confirmation overdue',
     RELEASE: 'release decision overdue',
     OVERDUE_RENEWAL: 'renewal overdue',
+    AIS_UPLOAD: 'AIS upload overdue',
+    FORFEITURE: 'forfeiture decision overdue',
   }[t];
 }

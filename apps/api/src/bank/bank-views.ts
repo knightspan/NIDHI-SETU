@@ -26,7 +26,9 @@ export async function toBankRequestViews(db: Db, rows: RequestRow[]): Promise<Ba
     status: r.status,
     snapshot: r.snapshot as unknown as BankSnapshot,
     response: (r.response as BankResponse | null) ?? null,
-    requestedBy: names.get(r.requestedById) ?? null,
+    requestedBy: r.requestedById ? (names.get(r.requestedById) ?? null) : 'NidhiSetu (scheduled)',
+    purpose: r.purpose,
+    reason: r.reason,
     respondedBy: r.respondedById
       ? (names.get(r.respondedById) ?? null)
       : r.respondedAt

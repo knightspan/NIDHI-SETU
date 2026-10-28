@@ -14,6 +14,8 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import {
   InstitutionListQuerySchema,
+  RegistersRetiredSchema,
+  type RegistersRetiredInput,
   MetricBaselineSchema,
   REPORT_TYPES,
   ReportQuerySchema,
@@ -122,6 +124,17 @@ export class OversightController {
   @Get('metrics')
   getMetrics() {
     return this.metrics.all();
+  }
+
+  /** Manual effort: paper registers retired (admin input). */
+  @RequirePermission('metrics:baseline')
+  @Put('metrics/registers')
+  @ApiZodBody(RegistersRetiredSchema)
+  setRegisters(
+    @CurrentUser() u: Principal,
+    @Body(new ZodPipe(RegistersRetiredSchema)) body: RegistersRetiredInput,
+  ) {
+    return this.metrics.setRegisters(body, actorOf(u));
   }
 
   @RequirePermission('metrics:baseline')

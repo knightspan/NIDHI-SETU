@@ -34,7 +34,10 @@ describe('allowedActions', () => {
       'verify',
     );
     expect(allowedActions(ro, ctx('OFFICER_VERIFIED'))).toContain('send_to_bank');
-    expect(allowedActions(ro, ctx('ACTIVE'))).toEqual(['upload']);
+    expect(allowedActions(ro, ctx('ACTIVE'))).toEqual(['upload', 'reattest', 'propose_forfeiture']);
+    expect(allowedActions(ro, { ...ctx('ACTIVE'), hasOpenBankRequest: true })).not.toContain(
+      'reattest',
+    );
   });
 
   it('enforces maker-checker for the competent authority', () => {

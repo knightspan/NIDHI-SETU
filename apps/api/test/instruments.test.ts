@@ -32,7 +32,8 @@ describe('institution module: declare, upload, submit', () => {
     expect(detail.fields).toHaveLength(9);
     for (const f of detail.fields) expect(f.effectiveTrust).toBe('DECLARED');
     expect(detail.jointName).toBe(true);
-    expect(detail.trustScore).toBe(25);
+    // 40 % provenance weight × 25 (all DECLARED) + half credit for three eyes not yet checked.
+    expect(detail.trustScore).toBe(40);
     expect(detail.allowedActions).toEqual(
       expect.arrayContaining(['edit', 'submit', 'delete', 'upload']),
     );

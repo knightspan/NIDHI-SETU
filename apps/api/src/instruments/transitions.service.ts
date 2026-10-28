@@ -4,6 +4,7 @@ import { AuditService } from '../audit/audit.service.js';
 import type { Actor } from '../common/actor.js';
 import { ClockService } from '../clock/clock.service.js';
 import { ConflictError } from '../domain/errors.js';
+import { TrinetraService } from './trinetra.service.js';
 import type { Instrument, Prisma } from '../generated/prisma/client.js';
 
 /** Timestamps set when an instrument enters a state. */
@@ -15,6 +16,7 @@ const STAMPS: Partial<Record<LifecycleStatus, keyof Prisma.InstrumentUpdateInput
   RENEWED: 'closedAt',
   RELEASED: 'closedAt',
   REJECTED: 'closedAt',
+  FORFEITED: 'closedAt',
 };
 
 /**
@@ -26,6 +28,7 @@ export class TransitionsService {
   constructor(
     private readonly audit: AuditService,
     private readonly clock: ClockService,
+    private readonly trinetra: TrinetraService,
   ) {}
 
   async transition(
@@ -37,6 +40,16 @@ export class TransitionsService {
   ): Promise<Instrument> {
     const from = instrument.status;
     const def = assertTransition(from, to, actor.role);
+    // Gates belong to the state machine: every path into the state is checked here, not in the UI.
+    if (def.gate === 'REVERIFICATION') {
+      const gate = await this.trinetra.gate(tx, instrument.id);
+      if (!gate.passed) {
+        throw new ConflictError(
+          `Re-verification required: ${gate.failures.map((f) => f.message).join('; ')}`,
+          'ReverificationGateFailed',
+        );
+      }
+    }
     const now = this.clock.now();
     const stamp = STAMPS[to];
     // Optimistic concurrency: the update only applies if nobody moved the instrument meanwhile.

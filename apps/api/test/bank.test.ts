@@ -74,7 +74,9 @@ describe('Bank Confirmation Desk and mock bank API', () => {
       expect([f, fv.effectiveTrust, fv.mismatch]).toEqual([f, 'BANK_CONFIRMED', false]);
       expect(fv.history[0]!.evidenceDocumentId).toBe(letter.documentId);
     }
-    expect(d.trustScore).toBeGreaterThanOrEqual(90);
+    // Provenance is fully bank-confirmed and the bank eye passes; the tax eye has no AIS yet.
+    expect(d.trustScore).toBeGreaterThanOrEqual(85);
+    expect(d.verification.eyes.find((e) => e.eye === 'BANK')?.result).toBe('PASS');
     expect(d.bankRequests[0]).toMatchObject({
       status: 'CONFIRMED',
       letterDocumentId: letter.documentId,

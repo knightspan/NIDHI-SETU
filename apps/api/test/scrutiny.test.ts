@@ -215,7 +215,8 @@ describe('scrutiny and discrepancy detection', () => {
     await ro.post(`/api/instruments/${id}/verify`).expect(200);
     d = await detail(ro, id);
     expect(d.status).toBe('OFFICER_VERIFIED');
-    expect(d.trustScore).toBe(75);
+    // Officer-verified fields (75 × 40 %) plus the eyes' current state.
+    expect(d.trustScore).toBe(67);
   });
 
   it('lets the officer reject a submission', async () => {

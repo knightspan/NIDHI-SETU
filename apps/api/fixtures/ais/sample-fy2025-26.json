@@ -1,0 +1,30 @@
+{
+  "_note": "FICTIONAL sample in the ASSUMED AIS JSON layout (see src/domain/ais-parser.ts). Not real taxpayer data.",
+  "assessee": { "pan": "AAATS0000F", "name": "SHIKSHA PRASAR TRUST (FICTIONAL)" },
+  "financialYear": "2025-26",
+  "informationCategories": [
+    {
+      "category": "Interest from deposit",
+      "infoCode": "SFT-016(TD)",
+      "entries": [
+        { "reportedBy": "STATE BANK OF INDIA", "amount": 71862.5 },
+        { "reportedBy": "HDFC BANK LIMITED", "amount": 108421.0 }
+      ]
+    },
+    {
+      "category": "Interest from savings bank",
+      "infoCode": "SFT-016(SB)",
+      "entries": [{ "reportedBy": "Punjab National Bank", "amount": 1520.0 }]
+    },
+    {
+      "category": "Rent received",
+      "infoCode": "TDS-194I",
+      "entries": [{ "reportedBy": "SOME TENANT (FICTIONAL)", "amount": 240000.0 }]
+    },
+    {
+      "category": "Interest from deposit",
+      "infoCode": "SFT-016(TD)",
+      "entries": [{ "reportedBy": "Fictional Co-operative Bank", "amount": 900.0 }]
+    }
+  ]
+}

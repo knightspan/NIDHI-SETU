@@ -29,6 +29,8 @@ import { RulesService } from '../rules/rules.service.js';
 import { AssertionsService, type AssertionInput } from './assertions.service.js';
 import { SUMMARY_INCLUDE, UNRESOLVED_DISCREPANCY, toSummary } from './instrument-views.js';
 import { TransitionsService } from './transitions.service.js';
+import { TrinetraService } from './trinetra.service.js';
+import { forfeituresForInstrument } from '../forfeiture/forfeiture-views.js';
 
 const QUEUES: Record<NonNullable<InstrumentListQuery['queue']>, Prisma.InstrumentWhereInput> = {
   scrutiny: {
@@ -59,12 +61,20 @@ export function declarationToAssertions(
     lienMarked: d.lienMarked,
     autoRenewal: d.autoRenewal,
   };
-  return FIELD_KEYS.map((field) => ({
-    field,
-    value: values[field],
-    trust: 'DECLARED' as const,
-    source,
-  }));
+  const terms: AssertionInput[] = [];
+  if (d.interestRate !== undefined)
+    terms.push({ field: 'interestRate', value: d.interestRate, trust: 'DECLARED', source });
+  if (d.maturityValue !== undefined)
+    terms.push({ field: 'maturityValue', value: d.maturityValue, trust: 'DECLARED', source });
+  return [
+    ...FIELD_KEYS.map((field) => ({
+      field,
+      value: values[field],
+      trust: 'DECLARED' as const,
+      source,
+    })),
+    ...terms,
+  ];
 }
 
 @Injectable()
@@ -78,6 +88,7 @@ export class InstrumentsService {
     private readonly engine: DiscrepancyEngine,
     private readonly notifications: NotificationsService,
     private readonly rules: RulesService,
+    private readonly trinetra: TrinetraService,
   ) {}
 
   /** Loads an instrument the principal is allowed to see, or 404 (never 403, to avoid leaking existence). */
@@ -108,17 +119,32 @@ export class InstrumentsService {
     inst: Instrument,
     db: Db = this.prisma,
   ): Promise<InstrumentAction[]> {
-    const [unresolved, replacement, release] = await Promise.all([
-      db.discrepancy.count({ where: { instrumentId: inst.id, ...UNRESOLVED_DISCREPANCY } }),
-      db.instrument.count({
-        where: { replacesInstrumentId: inst.id, status: { not: 'REJECTED' } },
-      }),
-      db.releaseRequest.findFirst({
-        where: { instrumentId: inst.id, status: { in: ['REQUESTED', 'RECOMMENDED', 'APPROVED'] } },
-        orderBy: { requestedAt: 'desc' },
-      }),
-    ]);
+    const [unresolved, replacement, release, forfeiture, openBankRequest, taxLocked] =
+      await Promise.all([
+        db.discrepancy.count({ where: { instrumentId: inst.id, ...UNRESOLVED_DISCREPANCY } }),
+        db.instrument.count({
+          where: { replacesInstrumentId: inst.id, status: { not: 'REJECTED' } },
+        }),
+        db.releaseRequest.findFirst({
+          where: {
+            instrumentId: inst.id,
+            status: { in: ['REQUESTED', 'RECOMMENDED', 'APPROVED'] },
+          },
+          orderBy: { requestedAt: 'desc' },
+        }),
+        db.forfeitureRequest.findFirst({
+          where: { instrumentId: inst.id, status: { in: ['PROPOSED', 'APPROVED'] } },
+          orderBy: { proposedAt: 'desc' },
+        }),
+        db.bankConfirmationRequest.count({
+          where: { instrumentId: inst.id, status: { in: ['PENDING', 'FAILED'] } },
+        }),
+        this.trinetra.taxLocked(db, inst.id),
+      ]);
     return allowedActions(p, {
+      forfeiture: forfeiture ? { proposedById: forfeiture.proposedById } : null,
+      hasOpenBankRequest: openBankRequest > 0,
+      taxLocked,
       status: inst.status,
       unresolvedDiscrepancies: unresolved,
       hasReplacement: replacement > 0,
@@ -171,7 +197,9 @@ export class InstrumentsService {
           // `nulls` is only valid on nullable columns.
           q.sort === 'maturityDate' || q.sort === 'amount'
             ? { [q.sort]: { sort: q.dir, nulls: 'last' } }
-            : { [q.sort]: q.dir },
+            : q.sort === 'risk'
+              ? { riskScore: q.dir }
+              : { [q.sort]: q.dir },
           { id: 'asc' },
         ],
         skip: (q.page - 1) * q.pageSize,
@@ -299,6 +327,8 @@ export class InstrumentsService {
       ),
       bankRequests: await bankRequestsForInstrument(this.prisma, inst.id),
       releases: await releasesForInstrument(this.prisma, inst.id),
+      forfeitures: await forfeituresForInstrument(this.prisma, inst.id),
+      verification: await this.trinetra.view(inst.id),
       allowedActions: await this.actionsFor(p, inst),
     };
   }
@@ -393,6 +423,7 @@ export class InstrumentsService {
         },
       });
       await this.assertions.apply(tx, inst.id, declarationToAssertions(d), actor);
+      await this.trinetra.rescore(tx, inst.id);
       await this.audit.record(
         {
           actor,
@@ -468,6 +499,9 @@ export class InstrumentsService {
   /** Hook run after anything that can change an instrument's evidence: re-run discrepancy rules. */
   async afterChange(tx: Prisma.TransactionClient, id: string, actor: Actor): Promise<void> {
     await this.engine.sync(tx, id, actor);
+    // TRINETRA document eye (maturity math, IFSC master, duplicates), then one rescore.
+    await this.trinetra.evaluateDocument(tx, id, actor);
+    await this.trinetra.rescore(tx, id);
   }
 
   /**

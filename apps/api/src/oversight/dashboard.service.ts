@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { trustMixByRegion } from '../domain/effort.js';
 import {
   HELD_STATES,
   LIFECYCLE_STATUSES,
@@ -55,6 +56,7 @@ export class DashboardService {
             amount: true,
             bankCode: true,
             bank: { select: { name: true } },
+            trustTier: true,
             institution: { select: { regionId: true } },
           },
         }),
@@ -133,6 +135,13 @@ export class DashboardService {
         .map(([code, v]) => ({ code, name: v.name, count: v.count, amount: v.amount.toFixed(2) }))
         .sort((a, b) => Number(b.amount) - Number(a.amount)),
       queue: await this.queue(p, scope, s, byValidityMap.get('OVERDUE_RENEWAL') ?? 0, fraud),
+      trustMix: trustMixByRegion(
+        held.map((h) => ({
+          region: regionName.get(h.institution.regionId) ?? '—',
+          tier: h.trustTier,
+          count: 1,
+        })),
+      ),
       generatedInMs: Date.now() - started,
     };
   }

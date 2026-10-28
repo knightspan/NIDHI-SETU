@@ -8,6 +8,7 @@ import {
   type FieldKey,
   type InstrumentType,
   type LifecycleStatus,
+  type RiskLevel,
   type Role,
   type TrustLevel,
   type ValidityStatus,
@@ -15,6 +16,7 @@ import {
 import { IFSC_REGEX, isoDate } from '../fields.js';
 import type { BankRequestView } from './bank.js';
 import type { ReleaseView } from './release.js';
+import type { ForfeitureView, InstrumentVerificationView } from './verification.js';
 import type { DiscrepancyView } from './scrutiny.js';
 
 /** What an institution declares about an instrument (all become DECLARED assertions). */
@@ -36,6 +38,9 @@ export const InstrumentDeclarationSchema = z
     depositorNames: z.array(z.string().trim().min(2).max(160)).min(1).max(5),
     lienMarked: z.boolean(),
     autoRenewal: z.boolean(),
+    /** Optional deposit terms (used by the maturity-math check and the tax heartbeat). */
+    interestRate: z.coerce.number().positive().max(25).optional(),
+    maturityValue: z.coerce.number().positive().max(1e12).optional(),
   })
   .refine((d) => d.maturityDate > d.issueDate, {
     message: 'Maturity must be after the issue date',
@@ -59,7 +64,9 @@ export const InstrumentListQuerySchema = z.object({
   mismatch: z.enum(['true', 'false']).optional(),
   legacy: z.enum(['true', 'false']).optional(),
   queue: z.enum(['scrutiny', 'bank', 'renewal', 'release']).optional(),
-  sort: z.enum(['maturityDate', 'updatedAt', 'amount', 'trustScore', 'refNo']).default('updatedAt'),
+  sort: z
+    .enum(['maturityDate', 'updatedAt', 'amount', 'trustScore', 'refNo', 'risk'])
+    .default('updatedAt'),
   dir: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(200).default(25),
@@ -86,6 +93,8 @@ export interface InstrumentSummary {
   issueDate: string | null;
   maturityDate: string | null;
   trustScore: number;
+  riskLevel: RiskLevel;
+  riskScore: number;
   mismatchCount: number;
   openDiscrepancies: number;
   legacy: boolean;
@@ -174,6 +183,9 @@ export interface InstrumentDetail extends InstrumentSummary {
   discrepancies: DiscrepancyView[];
   bankRequests: BankRequestView[];
   releases: ReleaseView[];
+  forfeitures: ForfeitureView[];
+  /** TRINETRA: eyes, heartbeat, risk, gate. */
+  verification: InstrumentVerificationView;
   /** Actions the current user may take right now (computed by the API). */
   allowedActions: string[];
 }

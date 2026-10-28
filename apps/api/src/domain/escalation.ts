@@ -7,6 +7,8 @@ export const ESCALATION_TYPES = [
   'BANK_REQUEST',
   'RELEASE',
   'OVERDUE_RENEWAL',
+  'AIS_UPLOAD',
+  'FORFEITURE',
 ] as const;
 export type EscalationType = (typeof ESCALATION_TYPES)[number];
 
@@ -44,6 +46,10 @@ export function slaDaysFor(type: EscalationType, sla: EscalationRule): number {
       return sla.releaseDecisionDays;
     case 'OVERDUE_RENEWAL':
       return sla.overdueRenewalDays;
+    case 'AIS_UPLOAD':
+      return sla.aisUploadDays;
+    case 'FORFEITURE':
+      return sla.forfeitureDecisionDays;
   }
 }
 

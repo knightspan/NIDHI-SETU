@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { FieldKey } from './enums.js';
+import type { AssertedField, FieldKey, TermFieldKey } from './enums.js';
 
 /** IFSC: 4 letters (bank), a zero, 6 alphanumerics (branch). */
 export const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
@@ -21,11 +21,16 @@ function str(v: unknown): string {
   return JSON.stringify(v) ?? '';
 }
 
-export function normalizeFieldValue(field: FieldKey, raw: unknown): string {
+export function normalizeFieldValue(field: AssertedField, raw: unknown): string {
   if (raw === null || raw === undefined) return '';
   switch (field) {
-    case 'amount': {
+    case 'amount':
+    case 'maturityValue': {
       const n = typeof raw === 'number' ? raw : Number(str(raw).replace(/[₹,\s]/g, ''));
+      return Number.isFinite(n) ? n.toFixed(2) : str(raw).trim();
+    }
+    case 'interestRate': {
+      const n = typeof raw === 'number' ? raw : Number(str(raw).replace(/[%\s]|p\.?a\.?/gi, ''));
       return Number.isFinite(n) ? n.toFixed(2) : str(raw).trim();
     }
     case 'issueDate':
@@ -62,6 +67,11 @@ export const FIELD_LABELS: Record<FieldKey, string> = {
   depositorNames: 'Beneficiary / depositor names',
   lienMarked: 'Lien marked in favour of AICTE',
   autoRenewal: 'Auto-renewal',
+};
+
+export const TERM_FIELD_LABELS: Record<TermFieldKey, string> = {
+  interestRate: 'Interest rate (% p.a.)',
+  maturityValue: 'Maturity value (₹)',
 };
 
 /** Name that marks a joint deposit with AICTE in depositorNames. */
