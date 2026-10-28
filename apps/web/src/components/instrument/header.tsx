@@ -16,10 +16,8 @@ export function InstrumentHeader({ inst }: { inst: InstrumentDetail }) {
       <CardBody className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
-              {t(`instrumentTypes.${inst.type}`)}
-            </p>
-            <h1 className="text-2xl font-bold text-slate-900">{inst.refNo}</h1>
+            <p className="dp-engrave">{t(`instrumentTypes.${inst.type}`)}</p>
+            <h1 className="dp-ref mt-1">{inst.refNo}</h1>
             <p className="mt-0.5 text-sm text-slate-700">
               {inst.institution.name} ·{' '}
               <span className="text-slate-500">{inst.institution.aicteId}</span>
@@ -50,11 +48,11 @@ export function InstrumentHeader({ inst }: { inst: InstrumentDetail }) {
             </div>
           </div>
           <div className="w-full max-w-56 space-y-1">
-            <p className="text-xs font-medium text-slate-600">{t('trust.score')}</p>
+            <p className="dp-engrave">{t('trust.score')}</p>
             <TrustScore score={inst.trustScore} />
           </div>
         </div>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+        <dl className="dp-facts text-sm">
           <Fact label={t('fields.amount')} value={formatInr(inst.amount)} />
           <Fact label={t('fields.bankCode')} value={inst.bankName ?? inst.bankCode ?? '—'} />
           <Fact label={t('fields.issueDate')} value={formatDate(inst.issueDate)} />
@@ -68,8 +66,8 @@ export function InstrumentHeader({ inst }: { inst: InstrumentDetail }) {
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="font-semibold text-slate-900">{value}</dd>
+      <dt className="dp-engrave">{label}</dt>
+      <dd className="mt-1 font-semibold tracking-tight text-ink">{value}</dd>
     </div>
   );
 }

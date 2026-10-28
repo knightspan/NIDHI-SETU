@@ -49,9 +49,9 @@ export function GlobalSearch() {
   const empty = data && data.institutions.length === 0 && data.instruments.length === 0;
 
   return (
-    <div ref={box} className="relative hidden w-full max-w-sm md:block">
+    <div ref={box} className="relative w-full">
       <Search
-        className="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-slate-400"
+        className="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-[var(--dp-color-on-field-muted)]"
         aria-hidden
       />
       <input
@@ -68,26 +68,18 @@ export function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-        className="h-9 w-full rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm placeholder:text-slate-400 focus:border-brand-600 focus:outline-2 focus:outline-brand-600/30"
+        className="dp-search"
       />
       {show && (
-        <div
-          id={listId}
-          className="absolute top-11 right-0 left-0 z-40 max-h-96 overflow-y-auto rounded-md border border-slate-200 bg-white p-2 shadow-lg"
-        >
+        <div id={listId} className="dp-panel dp-results">
           {empty && <p className="p-2 text-sm text-slate-600">{t('none')}</p>}
           {data.institutions.length > 0 && (
             <section>
-              <h3 className="px-2 pt-1 text-xs font-semibold text-slate-500 uppercase">
-                {t('institutions')}
-              </h3>
+              <h3 className="dp-engrave px-2 pt-1">{t('institutions')}</h3>
               <ul>
                 {data.institutions.map((i) => (
                   <li key={i.id}>
-                    <Link
-                      href={`/institutions/${i.id}`}
-                      className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50"
-                    >
+                    <Link href={`/institutions/${i.id}`} className="dp-result">
                       <Building2 className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
                       <span className="truncate">{i.name}</span>
                       <span className="ml-auto shrink-0 text-xs text-slate-500">{i.aicteId}</span>
@@ -99,16 +91,11 @@ export function GlobalSearch() {
           )}
           {data.instruments.length > 0 && (
             <section>
-              <h3 className="px-2 pt-2 text-xs font-semibold text-slate-500 uppercase">
-                {t('instruments')}
-              </h3>
+              <h3 className="dp-engrave px-2 pt-2">{t('instruments')}</h3>
               <ul>
                 {data.instruments.map((i) => (
                   <li key={i.id}>
-                    <Link
-                      href={`/instruments/${i.id}`}
-                      className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50"
-                    >
+                    <Link href={`/instruments/${i.id}`} className="dp-result">
                       <FileStack className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
                       <span className="font-medium">{i.refNo}</span>
                       <span className="truncate text-xs text-slate-500">

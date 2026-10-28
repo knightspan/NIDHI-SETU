@@ -63,20 +63,17 @@ export function SavedFilters() {
       </span>
       {data?.length === 0 && <span className="text-slate-500">{t('none')}</span>}
       {data?.map((f) => (
-        <span
-          key={f.id}
-          className="inline-flex items-center rounded-full bg-brand-50 ring-1 ring-brand-600/20"
-        >
+        <span key={f.id} className="dp-chip">
           <button
             type="button"
-            className="rounded-l-full px-3 py-1 text-brand-900 hover:bg-brand-100"
+            className="rounded-l-[4px] px-3 py-1 font-medium text-ink hover:bg-black/5"
             onClick={() => router.replace(`${pathname}?${new URLSearchParams(f.query).toString()}`)}
           >
             {f.name}
           </button>
           <button
             type="button"
-            className="rounded-r-full px-1.5 py-1 text-slate-500 hover:text-red-700"
+            className="rounded-r-[4px] px-1.5 py-1 text-label hover:text-red-700"
             aria-label={`${tc('delete')}: ${f.name}`}
             onClick={() => remove.mutate(f.id)}
           >

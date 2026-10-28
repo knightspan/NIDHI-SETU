@@ -24,6 +24,9 @@ const STATUS_TONE: Record<LifecycleStatus, Tone> = {
   RELEASE_APPROVED: 'purple',
   RELEASED: 'slate',
   RELEASE_REJECTED: 'red',
+  FORFEITURE_PROPOSED: 'red',
+  FORFEITURE_APPROVED: 'red',
+  FORFEITED: 'slate',
   REJECTED: 'red',
 };
 
@@ -73,7 +76,7 @@ export function TrustBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
+        'dp-stamp inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
         cls,
         className,
       )}
@@ -111,7 +114,7 @@ export function TrustScore({ score, compact }: { score: number; compact?: boolea
   return (
     <div className={cn('flex items-center gap-2', compact ? 'min-w-24' : 'min-w-40')}>
       <div
-        className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200"
+        className="dp-meter"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={100}

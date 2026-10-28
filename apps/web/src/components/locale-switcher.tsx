@@ -15,10 +15,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      className={
-        className ??
-        'inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100'
-      }
+      className={className ?? 'dp-util dp-press'}
       onClick={() => {
         document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
         router.refresh();

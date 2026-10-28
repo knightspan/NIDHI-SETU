@@ -110,13 +110,7 @@ export default function BankRequestPage() {
         {(['yes', 'no'] as const).map((v) => (
           <label
             key={v}
-            className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md border px-3 text-sm font-medium ${
-              value === v
-                ? v === 'yes'
-                  ? 'border-green-700 bg-green-50 text-green-900'
-                  : 'border-red-700 bg-red-50 text-red-900'
-                : 'border-slate-300 bg-white'
-            }`}
+            className={`dp-choice ${value === v ? (v === 'yes' ? 'dp-choice-yes' : 'dp-choice-no') : ''}`}
           >
             <input
               type="radio"

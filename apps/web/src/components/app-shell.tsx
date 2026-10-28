@@ -1,16 +1,16 @@
 'use client';
 
-import { CalendarClock, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
+import { CalendarClock, LogOut, Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { Spinner } from '@/components/ui/misc';
 import { ApiError } from '@/lib/api-client';
-import { visibleNav } from '@/lib/nav';
+import { visibleNav, type NavItem } from '@/lib/nav';
 import { useMe, useSignOut } from '@/lib/session';
-import { cn, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { GlobalSearch } from './global-search';
 import { NotificationBell } from './notification-bell';
 
@@ -21,6 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const signOut = useSignOut();
   const [menuOpen, setMenuOpen] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (error instanceof ApiError && error.status === 401) {
@@ -29,6 +30,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [error, router, pathname]);
 
   useEffect(() => setMenuOpen(false), [pathname]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1101px)');
+    const onChange = () => {
+      if (mq.matches) setMenuOpen(false);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   // A temporary password must be replaced before anything else (the API enforces this too).
   useEffect(() => {
@@ -44,158 +64,213 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const items = visibleNav(me);
-  const sections: { id: 'work' | 'oversight' | 'admin'; label?: string }[] = [
-    { id: 'work' },
-    { id: 'oversight', label: t('nav.sectionOversight') },
-    { id: 'admin', label: t('nav.sectionAdmin') },
-  ];
   const isActive = (href: string) =>
     href === '/instruments'
       ? pathname === href || /^\/instruments\/(?!new)/.test(pathname)
       : pathname === href || pathname.startsWith(`${href}/`);
 
-  const nav = (
-    <nav aria-label={t('nav.main')} className="flex flex-col gap-4 p-3">
-      {sections.map((s) => {
-        const list = items.filter((i) => i.section === s.id);
-        if (list.length === 0) return null;
-        return (
-          <div key={s.id}>
-            {s.label && (
-              <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-brand-100/70">
-                {s.label}
-              </p>
-            )}
-            <ul className="space-y-0.5">
-              {list.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={isActive(item.href) ? 'page' : undefined}
-                    className={cn(
-                      'flex items-center gap-2.5 rounded-md px-2 py-2 text-sm text-brand-50 hover:bg-white/10',
-                      isActive(item.href) && 'bg-white/15 font-semibold text-white',
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {t(`nav.${item.key}`)}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-    </nav>
-  );
+  const canSearch =
+    me.permissions.includes('instrument:read') || me.permissions.includes('institution:read');
+  const place = me.institutionName || me.regionName || me.bankName || undefined;
 
   return (
-    <div className="min-h-screen lg:pl-64">
+    <div className="dp-app">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-white focus:p-2"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 dp-util"
       >
         {t('app.skipToContent')}
       </a>
 
-      {/* Sidebar (desktop) */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-y-auto bg-brand-900 lg:flex">
-        <Brand />
-        {nav}
-      </aside>
-
-      {/* Sidebar (mobile) */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-slate-900/50"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden
+      <div className="dp-case dp-housing" inert={menuOpen ? true : undefined}>
+        <aside className="dp-rail">
+          <RailBody
+            meName={me.name}
+            role={t(`roles.${me.role}`)}
+            place={place}
+            items={items}
+            isActive={isActive}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85%] flex-col overflow-y-auto bg-brand-900">
-            <div className="flex items-center justify-between pr-2">
-              <Brand />
+        </aside>
+        <div className="dp-seam" aria-hidden />
+        <div className="dp-stage">
+          {me.demoMode && (
+            <div className="dp-demo" role="status">
+              <span className="dp-lamp dp-lamp-on" aria-hidden />
+              <span>{t('app.demoBanner')}</span>
+              <span className="inline-flex items-center gap-1 font-semibold">
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+                {t('app.simulatedToday', { date: formatDate(me.today) })}
+              </span>
+            </div>
+          )}
+          <header className="dp-top">
+            <button
+              type="button"
+              className="dp-util dp-press dp-menu-btn"
+              onClick={() => setMenuOpen(true)}
+              aria-label={t('nav.openMenu')}
+              aria-expanded={menuOpen}
+            >
+              <Menu className="h-5 w-5" aria-hidden />
+            </button>
+            <Link href="/account" className="dp-who">
+              <span className="dp-who-name">{me.name}</span>
+              <span className="dp-who-role">
+                {t(`roles.${me.role}`)}
+                {place ? ` · ${place}` : ''}
+              </span>
+            </Link>
+            {canSearch && (
+              <div className="dp-searchwrap">
+                <GlobalSearch />
+              </div>
+            )}
+            <div className="dp-utils">
+              <NotificationBell />
+              <LocaleSwitcher />
               <button
                 type="button"
-                onClick={() => setMenuOpen(false)}
-                className="rounded p-2 text-white hover:bg-white/10"
-                aria-label={t('nav.closeMenu')}
+                onClick={() => void signOut()}
+                className="dp-util dp-press"
+                aria-label={t('common.signOut')}
               >
-                <X className="h-5 w-5" />
+                <LogOut className="h-4 w-4" aria-hidden />
+                <span className="dp-show-760">{t('common.signOut')}</span>
               </button>
             </div>
-            {nav}
+          </header>
+          <div className="dp-content">
+            <main id="main">{children}</main>
+          </div>
+        </div>
+      </div>
+
+      {menuOpen && (
+        <div className="dp-scrim" onClick={() => setMenuOpen(false)}>
+          <aside
+            className="dp-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('nav.main')}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RailBody
+              meName={me.name}
+              role={t(`roles.${me.role}`)}
+              place={place}
+              items={items}
+              isActive={isActive}
+              onNavigate={() => setMenuOpen(false)}
+              closeRef={closeRef}
+              onClose={() => setMenuOpen(false)}
+            />
           </aside>
         </div>
       )}
-
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-        {me.demoMode && (
-          <div className="flex flex-wrap items-center justify-center gap-x-3 bg-amber-100 px-3 py-1 text-xs text-amber-950">
-            <span>{t('app.demoBanner')}</span>
-            <span className="inline-flex items-center gap-1 font-semibold">
-              <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-              {t('app.simulatedToday', { date: formatDate(me.today) })}
-            </span>
-          </div>
-        )}
-        <div className="flex h-14 items-center gap-2 px-3 sm:px-6">
-          <button
-            type="button"
-            className="rounded p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
-            onClick={() => setMenuOpen(true)}
-            aria-label={t('nav.openMenu')}
-            aria-expanded={menuOpen}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 flex-1 md:flex-none md:w-56 lg:w-64">
-            <Link
-              href="/account"
-              className="block truncate text-sm font-semibold text-slate-900 hover:underline"
-            >
-              {me.name}
-            </Link>
-            <p className="truncate text-xs text-slate-600">
-              {t(`roles.${me.role}`)}
-              {me.institutionName && ` · ${me.institutionName}`}
-              {me.regionName && ` · ${me.regionName}`}
-              {me.bankName && ` · ${me.bankName}`}
-            </p>
-          </div>
-          <div className="flex flex-1 justify-center px-2">
-            {(me.permissions.includes('instrument:read') ||
-              me.permissions.includes('institution:read')) && <GlobalSearch />}
-          </div>
-          <NotificationBell />
-          <LocaleSwitcher />
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">{t('common.signOut')}</span>
-          </button>
-        </div>
-      </header>
-
-      <main id="main" className="mx-auto max-w-7xl px-3 py-6 sm:px-6">
-        {children}
-      </main>
     </div>
   );
 }
 
-function Brand() {
-  const t = useTranslations('app');
+function RailBody({
+  meName,
+  role,
+  place,
+  items,
+  isActive,
+  onNavigate,
+  closeRef,
+  onClose,
+}: {
+  meName: string;
+  role: string;
+  place?: string;
+  items: NavItem[];
+  isActive: (href: string) => boolean;
+  onNavigate?: () => void;
+  closeRef?: RefObject<HTMLButtonElement | null>;
+  onClose?: () => void;
+}) {
+  const t = useTranslations();
+  const sections: { id: 'work' | 'oversight' | 'admin'; label?: string }[] = [
+    { id: 'work' },
+    { id: 'oversight', label: t('nav.sectionOversight') },
+    { id: 'admin', label: t('nav.sectionAdmin') },
+  ];
+  const groups = sections
+    .map((s) => ({ ...s, list: items.filter((i) => i.section === s.id) }))
+    .filter((s) => s.list.length > 0);
+  let n = 0;
+
   return (
-    <Link href="/dashboard" className="flex items-center gap-2 px-5 py-4 text-white">
-      <ShieldCheck className="h-6 w-6" aria-hidden />
-      <span>
-        <span className="block font-bold leading-tight">{t('name')}</span>
-        <span className="block text-xs text-brand-100/80">AICTE</span>
-      </span>
-    </Link>
+    <>
+      <div className="flex items-start gap-2">
+        <Link href="/dashboard" className="dp-brand min-w-0 flex-1" onClick={onNavigate}>
+          <span className="dp-brand-tools">
+            <span className="dp-vents" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="flex gap-2" aria-hidden>
+              <i className="dp-screw" />
+              <i className="dp-screw" />
+            </span>
+          </span>
+          <span className="dp-brand-name">{t('app.name')}</span>
+          <span className="dp-meta">{t('app.org')}</span>
+        </Link>
+        {onClose && (
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="dp-util dp-press h-10 w-10 shrink-0"
+            aria-label={t('nav.closeMenu')}
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        )}
+      </div>
+
+      <nav aria-label={t('nav.main')} className="dp-keybank">
+        {groups.map((s, bay) => (
+          <div key={s.id} className="dp-bay">
+            <p className="dp-bayhead">
+              <span className="dp-engrave">{String(bay + 1).padStart(2, '0')}</span>
+              {s.label && <span className="dp-engrave">{s.label}</span>}
+              <span className="dp-bayrule" aria-hidden />
+            </p>
+            <ul className="flex flex-col gap-1.5">
+              {s.list.map((item) => {
+                n += 1;
+                const index = String(n).padStart(2, '0');
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={isActive(item.href) ? 'page' : undefined}
+                      className="dp-navkey dp-press"
+                      onClick={onNavigate}
+                    >
+                      <span className="dp-navindex">{index}</span>
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="dp-navlabel">{t(`nav.${item.key}`)}</span>
+                      <span className="dp-lamp" aria-hidden />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <Link href="/account" className="dp-idplate" onClick={onNavigate}>
+        <span className="dp-engrave">{role}</span>
+        <span className="dp-idname">{meName}</span>
+        {place && <span className="dp-meta truncate">{place}</span>}
+      </Link>
+    </>
   );
 }

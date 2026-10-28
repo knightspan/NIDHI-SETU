@@ -57,12 +57,7 @@ function Inner() {
             role="tab"
             aria-selected={status === tab.id}
             onClick={() => set({ status: tab.id })}
-            className={cn(
-              'rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-inset',
-              status === tab.id
-                ? 'bg-brand-700 text-white ring-brand-700'
-                : 'bg-white text-slate-700 ring-slate-300 hover:bg-slate-50',
-            )}
+            className="dp-tab dp-press"
           >
             {tab.label}
           </button>

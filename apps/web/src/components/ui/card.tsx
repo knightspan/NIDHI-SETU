@@ -1,13 +1,12 @@
 import type { ComponentProps, HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export function Card({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('rounded-lg border border-slate-200 bg-white shadow-xs', className)}
-      {...props}
-    />
-  );
+export function Card({
+  className,
+  tone = 'raised',
+  ...props
+}: ComponentProps<'div'> & { tone?: 'raised' | 'screen' }) {
+  return <div className={cn(tone === 'screen' ? 'dp-screen' : 'dp-panel', className)} {...props} />;
 }
 
 export function CardHeader({
@@ -26,13 +25,13 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3',
+        'dp-panel-head flex flex-wrap items-start justify-between gap-3 px-4 py-3',
         className,
       )}
     >
       <div className="min-w-0">
-        <Heading className="text-base font-semibold text-slate-900">{title}</Heading>
-        {description && <p className="mt-0.5 text-sm text-slate-600">{description}</p>}
+        <Heading className="text-base font-bold tracking-tight text-ink">{title}</Heading>
+        {description && <p className="mt-0.5 text-sm text-label">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

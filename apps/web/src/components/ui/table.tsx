@@ -8,7 +8,7 @@ export function Table({
 }: HTMLAttributes<HTMLTableElement> & { caption?: string }) {
   return (
     <div className="relative w-full overflow-x-auto">
-      <table className={cn('w-full border-collapse text-sm', className)} {...props}>
+      <table className={cn('w-full border-collapse text-sm text-ink', className)} {...props}>
         {caption && <caption className="sr-only">{caption}</caption>}
         {props.children}
       </table>
@@ -17,20 +17,15 @@ export function Table({
 }
 
 export function THead(props: HTMLAttributes<HTMLTableSectionElement>) {
-  return (
-    <thead
-      className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600"
-      {...props}
-    />
-  );
+  return <thead className="dp-thead" {...props} />;
 }
 
 export function TBody(props: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className="divide-y divide-slate-100" {...props} />;
+  return <tbody {...props} />;
 }
 
 export function TR({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn('hover:bg-slate-50/60', className)} {...props} />;
+  return <tr className={cn('dp-row', className)} {...props} />;
 }
 
 export function TH({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
@@ -44,5 +39,5 @@ export function TH({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
 }
 
 export function TD({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('px-3 py-2 align-top text-slate-800', className)} {...props} />;
+  return <td className={cn('px-3 py-2 align-top text-ink', className)} {...props} />;
 }

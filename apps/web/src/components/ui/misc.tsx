@@ -24,7 +24,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
+        'dp-stamp inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset',
         tones[tone],
         className,
       )}
@@ -45,15 +45,15 @@ export function Alert({
   className?: string;
 }) {
   const map = {
-    info: { cls: 'border-blue-200 bg-blue-50 text-blue-900', Icon: Info },
-    success: { cls: 'border-green-200 bg-green-50 text-green-900', Icon: CheckCircle2 },
-    warning: { cls: 'border-amber-200 bg-amber-50 text-amber-900', Icon: AlertTriangle },
-    error: { cls: 'border-red-200 bg-red-50 text-red-900', Icon: XCircle },
+    info: { cls: 'dp-alert-info', Icon: Info },
+    success: { cls: 'dp-alert-success', Icon: CheckCircle2 },
+    warning: { cls: 'dp-alert-warning', Icon: AlertTriangle },
+    error: { cls: 'dp-alert-error', Icon: XCircle },
   }[tone];
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
-      className={cn('flex gap-3 rounded-md border p-3 text-sm', map.cls, className)}
+      className={cn('dp-alert', map.cls, className)}
     >
       <map.Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <div className="min-w-0">
@@ -67,7 +67,7 @@ export function Alert({
 export function Spinner({ label, className }: { label?: string; className?: string }) {
   const t = useTranslations('common');
   return (
-    <div role="status" className={cn('flex items-center gap-2 text-sm text-slate-600', className)}>
+    <div role="status" className={cn('flex items-center gap-2 text-sm text-label', className)}>
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
       <span>{label ?? t('loading')}</span>
     </div>
@@ -75,14 +75,14 @@ export function Spinner({ label, className }: { label?: string; className?: stri
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-md bg-slate-200', className)} aria-hidden />;
+  return <div className={cn('dp-skeleton animate-pulse', className)} aria-hidden />;
 }
 
 export function EmptyState({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center">
-      <p className="font-medium text-slate-800">{title}</p>
-      {children && <div className="mt-1 text-sm text-slate-600">{children}</div>}
+    <div className="dp-empty">
+      <p className="font-semibold">{title}</p>
+      {children && <div className="mt-1 text-sm text-label">{children}</div>}
     </div>
   );
 }
@@ -118,24 +118,21 @@ export function Dialog({
       ref={ref}
       onClose={onClose}
       aria-labelledby="dialog-title"
-      className={cn(
-        'm-auto w-[calc(100%-2rem)] rounded-lg border border-slate-200 p-0 shadow-xl backdrop:bg-slate-900/40',
-        wide ? 'max-w-3xl' : 'max-w-lg',
-      )}
+      className={cn('dp-dialog', wide ? 'max-w-3xl' : 'max-w-lg')}
     >
       {open && (
-        <div className="flex max-h-[85vh] flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div className="dp-panel flex max-h-[85vh] flex-col">
+          <div className="dp-panel-head flex items-start justify-between gap-4 px-5 py-4">
             <div>
-              <h2 id="dialog-title" className="text-lg font-semibold text-slate-900">
+              <h2 id="dialog-title" className="text-lg font-bold tracking-tight text-ink">
                 {title}
               </h2>
-              {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
+              {description && <p className="mt-1 text-sm text-label">{description}</p>}
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-600"
+              className="dp-util dp-press h-9 w-9"
               aria-label={t('close')}
             >
               <X className="h-5 w-5" />
@@ -143,7 +140,7 @@ export function Dialog({
           </div>
           <div className="overflow-y-auto px-5 py-4">{children}</div>
           {footer && (
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
+            <div className="flex justify-end gap-2 px-5 py-3 shadow-[inset_0_1px_0_rgba(24,30,34,0.12)]">
               {footer}
             </div>
           )}
@@ -163,12 +160,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="dp-pagehead">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
+        <h1 className="dp-page-title">{title}</h1>
+        {description && <p className="dp-reading">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="dp-page-actions">{actions}</div>}
     </div>
   );
 }

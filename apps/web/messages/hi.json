@@ -119,7 +119,10 @@
     "RELEASE_APPROVED": "निर्मुक्ति स्वीकृत",
     "RELEASED": "निर्मुक्त",
     "RELEASE_REJECTED": "निर्मुक्ति अस्वीकृत",
-    "REJECTED": "अस्वीकृत"
+    "REJECTED": "अस्वीकृत",
+    "FORFEITURE_PROPOSED": "ज़ब्ती प्रस्तावित",
+    "FORFEITURE_APPROVED": "ज़ब्ती स्वीकृत",
+    "FORFEITED": "ज़ब्त"
   },
   "validity": {
     "VALID": "वैध",

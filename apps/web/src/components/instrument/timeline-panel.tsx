@@ -59,10 +59,7 @@ export function ChainPanel({ inst }: { inst: InstrumentDetail }) {
               <Link
                 href={`/instruments/${c.id}`}
                 aria-current={c.id === inst.id ? 'page' : undefined}
-                className={cn(
-                  'block w-full rounded-md border p-3 text-sm hover:border-brand-600',
-                  c.id === inst.id ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white',
-                )}
+                className={cn('dp-module dp-press', c.id === inst.id && 'dp-module-on')}
               >
                 <p className="font-semibold text-slate-900">{c.refNo}</p>
                 <p className="text-xs text-slate-600">

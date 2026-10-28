@@ -119,7 +119,10 @@
     "RELEASE_APPROVED": "Release approved",
     "RELEASED": "Released",
     "RELEASE_REJECTED": "Release rejected",
-    "REJECTED": "Rejected"
+    "REJECTED": "Rejected",
+    "FORFEITURE_PROPOSED": "Forfeiture proposed",
+    "FORFEITURE_APPROVED": "Forfeiture approved",
+    "FORFEITED": "Forfeited"
   },
   "validity": {
     "VALID": "Valid",

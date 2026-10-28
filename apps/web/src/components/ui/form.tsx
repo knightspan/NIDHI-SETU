@@ -7,8 +7,7 @@ import {
 } from 'react';
 import { cn } from '@/lib/utils';
 
-const control =
-  'block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-xs placeholder:text-slate-400 focus:border-brand-600 focus:outline-2 focus:outline-brand-600/30 disabled:bg-slate-100 aria-[invalid=true]:border-red-600';
+const control = 'dp-control';
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(control, 'h-10', className)} {...props} />;
@@ -36,7 +35,10 @@ export function Label({
   className?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className={cn('block text-sm font-medium text-slate-800', className)}>
+    <label
+      htmlFor={htmlFor}
+      className={cn('block text-[13px] font-semibold tracking-tight text-ink', className)}
+    >
       {children}
     </label>
   );

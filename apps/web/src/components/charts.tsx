@@ -17,9 +17,9 @@ import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 /** Chart tokens (dataviz reference palette, validated: series-1 passes on the white card surface). */
-const SERIES_1 = '#2a78d6';
-const GRID = '#e5e7eb';
-const AXIS_TEXT = '#52514e';
+const SERIES_1 = '#2c353b';
+const GRID = '#c5ccd0';
+const AXIS_TEXT = '#414b52';
 
 export const STATUS_COLORS = {
   good: '#0ca30c',
@@ -53,9 +53,7 @@ export function ChartCard({
       <CardBody className="space-y-2">
         {children}
         <details className="relative text-sm">
-          <summary className="cursor-pointer text-xs font-medium text-brand-700">
-            {t('showTable')}
-          </summary>
+          <summary className="dp-engrave cursor-pointer">{t('showTable')}</summary>
           <table className="mt-2 w-full text-xs">
             <caption className="sr-only">{title}</caption>
             <thead>
@@ -112,7 +110,7 @@ export function HBarChart({ data, format }: { data: BarDatum[]; format: (v: numb
             tick={{ fill: AXIS_TEXT, fontSize: 12 }}
           />
           <Tooltip
-            cursor={{ fill: 'rgba(42,120,214,0.08)' }}
+            cursor={{ fill: 'rgba(24,30,34,0.06)' }}
             formatter={(v, _n, item) => [
               `${format(Number(v))}${(item.payload as BarDatum).sub ? ` · ${(item.payload as BarDatum).sub}` : ''}`,
               '',
@@ -131,7 +129,7 @@ export function HBarChart({ data, format }: { data: BarDatum[]; format: (v: numb
               dataKey="value"
               position="right"
               formatter={(v: unknown) => format(Number(v))}
-              style={{ fill: '#0f172a', fontSize: 11 }}
+              style={{ fill: '#181e22', fontSize: 11 }}
             />
           </Bar>
         </BarChart>

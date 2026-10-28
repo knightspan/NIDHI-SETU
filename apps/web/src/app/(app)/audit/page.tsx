@@ -207,12 +207,10 @@ function Inner() {
                       <TD>
                         <code className="text-xs">{r.action}</code>
                         <details className="text-xs">
-                          <summary className="cursor-pointer text-brand-700">
-                            {t('details')}
-                          </summary>
+                          <summary className="dp-engrave cursor-pointer">{t('details')}</summary>
                           <pre
                             tabIndex={0}
-                            className="mt-1 max-w-md overflow-auto rounded bg-slate-50 p-2 text-[11px]"
+                            className="dp-well mt-1 max-w-md overflow-auto p-2 font-mono text-[11px]"
                           >
                             {JSON.stringify(r.data, null, 2)}
                           </pre>

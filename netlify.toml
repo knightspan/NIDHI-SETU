@@ -1,0 +1,20 @@
+# Netlify build for the Next.js app in this pnpm monorepo.
+# Leave the base directory empty (repository root) so `pnpm install` can see
+# the workspace. Do not set a package directory: publish paths below are
+# already relative to the repository root.
+
+[build]
+  command = "pnpm --filter @nidhisetu/web... build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  # Matches .nvmrc and engines.node (>= 22.12).
+  NODE_VERSION = "22"
+  # Next.js on Netlify cannot resolve packages from pnpm's isolated store
+  # unless dependencies are hoisted for the build.
+  PNPM_FLAGS = "--shamefully-hoist"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Automatic OpenNext adapter. Do not pin a version in package.json.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

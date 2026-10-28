@@ -78,15 +78,11 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             {showFinancials && (
-              <Card className="lg:col-span-1">
+              <Card tone="screen" className="lg:col-span-1">
                 <CardBody>
-                  <p className="text-sm font-medium text-slate-600">
-                    {t('dashboard.kpi.heldAmount')}
-                  </p>
-                  <p className="mt-1 text-4xl font-bold tracking-tight text-brand-900 tabular-nums">
-                    {compactInr(Number(k!.heldAmount))}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="dp-engrave dp-engrave-light">{t('dashboard.kpi.heldAmount')}</p>
+                  <p className="dp-readout">{compactInr(Number(k!.heldAmount))}</p>
+                  <p className="dp-screen-sub">
                     {formatInr(k!.heldAmount)} ·{' '}
                     {t('dashboard.kpi.heldCount', { count: k!.heldCount })}
                   </p>
@@ -105,17 +101,15 @@ export default function DashboardPage() {
                         <Link
                           href={q.href}
                           className={cn(
-                            'flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm hover:border-brand-600',
-                            q.urgent && q.count > 0
-                              ? 'border-red-200 bg-red-50/60'
-                              : 'border-slate-200',
+                            'dp-queue dp-press',
+                            q.urgent && q.count > 0 && 'dp-queue-hot',
                           )}
                         >
-                          <span className="text-slate-800">{t(`dashboard.queue.${q.key}`)}</span>
+                          <span>{t(`dashboard.queue.${q.key}`)}</span>
                           <span
                             className={cn(
-                              'text-lg font-bold tabular-nums',
-                              q.urgent && q.count > 0 ? 'text-red-700' : 'text-slate-900',
+                              'dp-queue-count',
+                              q.urgent && q.count > 0 ? 'text-red-700' : 'text-ink',
                             )}
                           >
                             {q.count}
@@ -134,14 +128,18 @@ export default function DashboardPage() {
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {tiles.map((tile) => (
                   <li key={tile.key}>
-                    <Link
-                      href={tile.href ?? '#'}
-                      className="block h-full rounded-lg focus-visible:outline-2"
-                    >
-                      <Card className="h-full p-4 hover:border-brand-600">
-                        <p className="text-xs font-medium text-slate-600">
-                          {t(`dashboard.kpi.${tile.key}`)}
-                        </p>
+                    <Link href={tile.href ?? '#'} className="block h-full rounded-[4px]">
+                      <Card className="relative h-full p-4">
+                        {(tile.tone === 'bad' || tile.tone === 'warn') && !!k![tile.key] && (
+                          <span
+                            className={cn(
+                              'dp-lamp absolute top-3 right-3',
+                              tile.tone === 'bad' ? 'dp-lamp-bad' : 'dp-lamp-on',
+                            )}
+                            aria-hidden
+                          />
+                        )}
+                        <p className="dp-engrave pr-4">{t(`dashboard.kpi.${tile.key}`)}</p>
                         <p
                           className={cn(
                             'mt-1 text-2xl font-bold tabular-nums',

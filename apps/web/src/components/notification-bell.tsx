@@ -18,7 +18,7 @@ export function NotificationBell() {
   return (
     <Link
       href="/notifications"
-      className="relative rounded-md p-2 text-slate-700 hover:bg-slate-100"
+      className="dp-util dp-press relative h-10 w-10"
       aria-label={`${t('notifications')}${unread ? ` (${unread})` : ''}`}
     >
       <Bell className="h-5 w-5" aria-hidden />
