@@ -1,0 +1,47 @@
+# Render Blueprint for the hosted NidhiSetu demo API (free web service, Docker).
+# The web app is on Netlify and proxies /api/* here (API_INTERNAL_URL at Netlify build time).
+# Database: Neon Postgres 16. Use the DIRECT connection string (not the "-pooler" host): the API
+# sets `-c TimeZone=UTC` at connection startup, which the pooler rejects.
+# Secrets are `sync: false`: Render asks for them on first deploy. They must be the same keys the
+# hosted database was seeded with (MFA secrets, document blobs and audit anchors depend on them).
+services:
+  - type: web
+    name: nidhisetu-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: 'true'
+      - key: API_PORT
+        value: '10000'
+      - key: STORAGE_DRIVER
+        value: db
+      - key: QUEUE_ENABLED
+        value: 'false'
+      - key: EMAIL_ENABLED
+        value: 'false'
+      - key: OCR_URL
+        value: ''
+      - key: BANK_ADAPTER
+        value: auto
+      - key: DATABASE_URL
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_ENCRYPTION_KEY
+        sync: false
+      - key: DOCUMENT_ENCRYPTION_KEY
+        sync: false
+      - key: AUDIT_ANCHOR_KEY
+        sync: false

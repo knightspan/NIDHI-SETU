@@ -737,3 +737,12 @@ model AisRequest {
 
   @@unique([institutionId, fy])
 }
+
+/// Encrypted document blobs when STORAGE_DRIVER=db (hosts without a persistent disk or object store).
+model StoredObject {
+  key       String   @id
+  data      Bytes
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("stored_objects")
+}

@@ -38,7 +38,7 @@ const EnvSchema = z.object({
   DOCUMENT_ENCRYPTION_KEY: base64Key,
   DOCUMENT_MAX_MB: z.coerce.number().positive().default(10),
   DOCUMENT_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
-  STORAGE_DRIVER: z.enum(['s3', 'fs']).default('fs'),
+  STORAGE_DRIVER: z.enum(['s3', 'fs', 'db']).default('fs'),
   STORAGE_FS_ROOT: z.string().optional(),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('ap-south-1'),

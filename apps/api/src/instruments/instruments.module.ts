@@ -8,7 +8,13 @@ import { DocumentsService } from '../documents/documents.service.js';
 import { OcrController } from '../ocr/ocr.controller.js';
 import { OcrClient } from '../ocr/ocr.client.js';
 import { OcrIngestService } from '../ocr/ocr-ingest.service.js';
-import { FsStorageAdapter, S3StorageAdapter, STORAGE_ADAPTER } from '../storage/storage.adapter.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  DbStorageAdapter,
+  FsStorageAdapter,
+  S3StorageAdapter,
+  STORAGE_ADAPTER,
+} from '../storage/storage.adapter.js';
 import { AssertionsService } from './assertions.service.js';
 import { InstrumentsController } from './instruments.controller.js';
 import { InstrumentsService } from './instruments.service.js';
@@ -29,8 +35,10 @@ import { TrinetraService } from './trinetra.service.js';
     OcrIngestService,
     {
       provide: STORAGE_ADAPTER,
-      useFactory: () => {
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => {
         const c = getConfig();
+        if (c.STORAGE_DRIVER === 'db') return new DbStorageAdapter(prisma);
         return c.STORAGE_DRIVER === 's3'
           ? new S3StorageAdapter({
               endpoint: c.S3_ENDPOINT,

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { PrismaService } from '../prisma/prisma.service.js';
 
 /**
  * Where encrypted document blobs live. The API encrypts before calling `put` (docs/DECISIONS.md D-005),
@@ -100,5 +101,30 @@ export class S3StorageAdapter implements StorageAdapter {
   async delete(key: string): Promise<void> {
     const { s3, client } = await this.client();
     await client.send(new s3.DeleteObjectCommand({ Bucket: this.opts.bucket, Key: key }));
+  }
+}
+
+/**
+ * Ciphertext in the application database (STORAGE_DRIVER=db). For free hosts whose disks are wiped
+ * on restart; the blobs are already AES-256-GCM encrypted by the API.
+ */
+export class DbStorageAdapter implements StorageAdapter {
+  readonly name = 'db';
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async put(key: string, body: Buffer): Promise<void> {
+    const data = new Uint8Array(body);
+    await this.prisma.storedObject.upsert({ where: { key }, create: { key, data }, update: { data } });
+  }
+
+  async get(key: string): Promise<Buffer> {
+    const row = await this.prisma.storedObject.findUnique({ where: { key } });
+    if (!row) throw new Error(`object not found: ${key}`);
+    return Buffer.from(row.data);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.prisma.storedObject.deleteMany({ where: { key } });
   }
 }
