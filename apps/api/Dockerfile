@@ -14,6 +14,8 @@ FROM base AS builder
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
+# turbo prune leaves out the shared root tsconfig that every package extends.
+COPY --from=pruner /repo/tsconfig.base.json ./tsconfig.base.json
 RUN pnpm turbo run build --filter=@nidhisetu/api...
 
 # 3. Runtime image, non-root.
