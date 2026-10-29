@@ -90,7 +90,9 @@
     "manualKey": "Or enter this key manually",
     "startOver": "Start over",
     "sessionExpired": "Your session has expired. Please sign in again.",
-    "demoAccounts": "Demo accounts are listed in the README."
+    "demoAccountsTitle": "Demo accounts (fictional)",
+    "demoAccountsHint": "Tap an account to fill the form, then sign in. Password for all: {password}. Officer roles also ask for a 6-digit authenticator code.",
+    "demoAccounts": "Demo accounts are listed below."
   },
   "roles": {
     "INSTITUTION_USER": "Institution",

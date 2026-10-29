@@ -16,6 +16,22 @@ import { Field, Input } from '@/components/ui/form';
 import { Alert } from '@/components/ui/misc';
 import { api, errorMessage } from '@/lib/api-client';
 
+const DEMO_PASSWORD = 'NidhiSetu@2026';
+/** Fictional demo accounts (seeded). Officer roles also ask for an authenticator code. */
+const DEMO_ACCOUNTS = [
+  { role: 'INSTITUTION_USER', email: 'institution@demo.nidhisetu.local' },
+  { role: 'INSTITUTION_USER', email: 'institution2@demo.nidhisetu.local' },
+  { role: 'RO_OFFICER', email: 'ro.north@demo.nidhisetu.local' },
+  { role: 'RO_OFFICER', email: 'ro.west@demo.nidhisetu.local' },
+  { role: 'BUREAU_OFFICER', email: 'bureau@demo.nidhisetu.local' },
+  { role: 'COMPETENT_AUTHORITY', email: 'authority@demo.nidhisetu.local' },
+  { role: 'FINANCE_OFFICER', email: 'finance@demo.nidhisetu.local' },
+  { role: 'BANK_OFFICER', email: 'bank.sbi@demo.nidhisetu.local' },
+  { role: 'BANK_OFFICER', email: 'bank.hdfc@demo.nidhisetu.local' },
+  { role: 'AUDITOR', email: 'auditor@demo.nidhisetu.local' },
+  { role: 'SYS_ADMIN', email: 'admin@demo.nidhisetu.local' },
+] as const;
+
 type Step =
   { kind: 'password' } | { kind: 'mfa' } | { kind: 'enrol'; qrDataUrl: string; secret: string };
 
@@ -143,7 +159,6 @@ function LoginInner() {
                   </span>
                   {t('auth.signIn')}
                 </Button>
-                <p className="dp-meta text-center">{t('auth.demoAccounts')}</p>
               </form>
             )}
 
@@ -214,6 +229,34 @@ function LoginInner() {
             )}
           </Card>
         </div>
+        {step.kind === 'password' && (
+          <section className="mt-6" aria-labelledby="demo-accounts-title">
+            <h2 id="demo-accounts-title" className="dp-meta">
+              {t('auth.demoAccountsTitle')}
+            </h2>
+            <p className="dp-reading">{t('auth.demoAccountsHint', { password: DEMO_PASSWORD })}</p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {DEMO_ACCOUNTS.map((a) => (
+                <li key={a.email}>
+                  <button
+                    type="button"
+                    className="dp-well w-full px-3 py-2 text-left"
+                    onClick={() => {
+                      pwForm.setValue('email', a.email, { shouldValidate: true });
+                      pwForm.setValue('password', DEMO_PASSWORD, { shouldValidate: true });
+                      setError(null);
+                    }}
+                  >
+                    <span className="block text-sm font-semibold text-ink">
+                      {t(`roles.${a.role}`)}
+                    </span>
+                    <span className="block font-mono text-xs break-all">{a.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <footer className="dp-login-foot dp-meta">{t('app.demoBanner')}</footer>
       </div>
     </div>
